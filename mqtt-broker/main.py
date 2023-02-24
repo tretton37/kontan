@@ -2,8 +2,6 @@ import paho.mqtt.client as mqtt
 import requests
 
 def postUserCheck(client, uid):
-	uid = uid.strip("b")
-	uid = uid.strip("'")
 	uid = uid.strip(":")
 
 	payload = {
@@ -37,7 +35,8 @@ def bind_on_message(handlers):
 	def on_message(client, userdata, msg):
 		for handler in handlers:
 			if handler["topic"] == msg.topic:
-				handler["onMessage"](client, str(msg.payload))
+				payload = msg.payload.decode("utf-8")
+				handler["onMessage"](client, str(payload))
 
 	return on_message
 
