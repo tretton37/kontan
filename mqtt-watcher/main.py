@@ -1,3 +1,5 @@
+import os
+
 import paho.mqtt.client as mqtt
 import requests
 
@@ -41,12 +43,15 @@ def bind_on_message(handlers):
 	return on_message
 
 def main():
+	mqtt_hostname = os.environ.get("MQTT_HOSTNAME", "localhost")
+	mqtt_port = int(os.environ.get("MQTT_PORT", "1883"))
+
 	handlers = [onUserCheckHandler]
 
 	client = mqtt.Client()
 	client.on_connect = bind_on_connect(handlers)
 	client.on_message = bind_on_message(handlers)
-	client.connect("localhost", 1883, 60)
+	client.connect(mqtt_hostname, mqtt_port, 60)
 
 	# Blocking call that processes network traffic, dispatches callbacks and
 	# handles reconnecting.
