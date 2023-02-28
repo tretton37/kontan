@@ -205,7 +205,7 @@ export const homeScreen = ({presentUsers, plannedPresence, userId}
         "elements": [
           {
             "type": "checkboxes",
-            "initial_options": initialOptions,
+            ...(initialOptions.length !== 0 && {"initial_options": initialOptions}),
             "options": inputOptions,
             "action_id": ACTIONS.DAY_CHECKBOX,
           }],
