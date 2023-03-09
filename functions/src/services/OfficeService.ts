@@ -68,11 +68,14 @@ export class OfficeService {
         .get();
     const userIds = await weekdaySnap
         .data()?.[weekdayKeyBuilder(Date.now())] as User["slackUserId"][];
-    const plannedForTodayRef = await usersRef
-        .where("slackUserId", "in", userIds).get();
+    let plannedForToday: User[] = [];
+    if (userIds.length > 0) {
+      const plannedForTodayRef = await usersRef
+          .where("slackUserId", "in", userIds).get();
 
-    const plannedForToday = plannedForTodayRef
-        .docs.map((doc) => doc.data() as User);
+      plannedForToday = plannedForTodayRef
+          .docs.map((doc) => doc.data() as User);
+    }
     const checkedInSet = new Set(
         physicallyCheckedIn.map((user) => user.slackUserId)
     );
