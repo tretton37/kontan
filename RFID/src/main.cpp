@@ -109,22 +109,13 @@ void goodbye(void)
   idle();
 }
 
-void newuser(byte *payload)
+void newuser(byte *payload, unsigned int length)
 {
   String tag = "";
-
-  for (byte i = 0; i < sizeof(payload); i++)
-  {
-    if (payload[i] < 0x10)
-    {
-      tag += F(":0");
-    }
-    else
-    {
-      tag += F(":");
-    }
-    tag += String(payload[i], HEX);
+  for (int i = 0; i < length; i++) {
+    tag += (char)payload[i];
   }
+  Serial.println(tag);
   beginDisp();
 
   display.println();
@@ -150,7 +141,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   if (String(topic) == "/user/unknown")
   {
-    newuser(payload);
+    newuser(payload, length);
   }
   isLoading = false;
   loadingTries = 0;
