@@ -109,7 +109,8 @@ void goodbye(void)
   idle();
 }
 
-void newuser(byte *payload) {
+void newuser(byte *payload)
+{
   String tag = "";
 
   for (byte i = 0; i < sizeof(payload); i++)
@@ -134,6 +135,7 @@ void newuser(byte *payload) {
 }
 
 bool isLoading = false;
+int loadingTries = 0;
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
@@ -151,6 +153,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     newuser(payload);
   }
   isLoading = false;
+  loadingTries = 0;
 }
 
 bool connectToMqtt()
@@ -165,6 +168,7 @@ bool connectToMqtt()
       Serial.println("connected with clientId: " + clientId);
       mqttClient.subscribe("/user/inbound");
       mqttClient.subscribe("/user/outbound");
+      mqttClient.subscribe("/user/unknown");
       mqttClient.setCallback(callback);
       return true;
     }
@@ -220,19 +224,18 @@ void loading(void)
     display.drawBitmap(0, 0, LoadingBitmap[count], 128, 64, WHITE);
     display.display();
     count++;
-    delay(250);
+    delay(200);
   }
 }
 
-void error(void) {
+void error(void)
+{
   beginDisp();
   display.println("Error");
   display.display();
   delay(2000);
   idle();
 }
-
-int loadingTries = 0;
 
 void loop()
 {
@@ -247,6 +250,7 @@ void loop()
   {
     loading();
     loadingTries++;
+    return;
   }
   else if (isLoading && loadingTries >= 5)
   {
@@ -294,5 +298,4 @@ void loop()
   isLoading = true;
 
   mfrc522.PICC_HaltA();
-  delay(1000);
 }
