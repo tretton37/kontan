@@ -17,7 +17,6 @@ interface Action {
   selected_options: { value: string}[]
 }
 export default async (request: Request, response: Response, admin: app.App) => {
-  console.log("test");
   if (!validateSlackRequest(request)) {
     return response.status(400)
         .send("Error: Signature mismatch security error");
@@ -43,7 +42,6 @@ export default async (request: Request, response: Response, admin: app.App) => {
       await showHomeScreen(web, payload.user.id, admin);
     }
     if (action_id === ACTIONS.DAY_CHECKBOX) {
-      // console.log(selected_options);
       const values = selected_options
           .map(({value}) => value.replace("weekdayCheckbox-", ""));
       await officeService.setPlannedPresence(values, payload.user.id);

@@ -3,7 +3,7 @@ import * as fbAdmin from "firebase-admin";
 
 import interactive from "./slackInteractive";
 import event from "./slackEvent";
-import {User} from "./services/UserService";
+import {UserService, User} from "./services/UserService";
 import {OfficeService} from "./services/OfficeService";
 
 // // Start writing functions
@@ -15,12 +15,16 @@ export const checkUser = functions
     .https
     .onRequest(async (request, response) => {
       const {tag} = request.body satisfies User["tag"];
-      const service = new OfficeService(admin);
-      const {status} = await service.checkUser(tag);
+      const userService = new UserService(admin);
+      if (!(await userService.tagExists(tag))) {
+        response.status(404).send("User doesn't exist");
+        return;
+      }
+      const officeService = new OfficeService(admin);
+      const {status} = await officeService.checkUser(tag);
       if (status === "OUTBOUND") {
         response.status(409).send("User checked out");
-      }
-      if (status === "INBOUND") {
+      } else if (status === "INBOUND") {
         response.status(201).send("User checked in");
       }
     });

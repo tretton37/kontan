@@ -38,4 +38,13 @@ export class UserService {
     const snapshot = await ref.get();
     return snapshot.exists;
   }
+
+  async tagExists(tagId: string) {
+    const ref = this.admin
+        .firestore()
+        .collection("users")
+        .where("tag", "in", [tagId]);
+    const snapshot = await ref.get();
+    return !snapshot.empty;
+  }
 }

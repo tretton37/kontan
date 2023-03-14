@@ -17,13 +17,13 @@ export const weekdayKeyToDayStr = (key: string, long = true) => {
 };
 
 /**
- * @desc Returns an array keys to the upcoming weekdays from tomorrow
+ * @desc Returns an array keys to the upcoming weekdays from today
  * @return {string[]}
  */
 export const getUpcomingWeekdayKeys = () => {
   const today = Date.now();
   return new Array(13).fill(null).map((_, i) => {
-    return new Date(today + ((i + 1) * 24 * 60 * 60 * 1000));
+    return new Date(today + (i * 24 * 60 * 60 * 1000));
   }).reduce((acc, date) => {
     if (date.getDay() !== 0 && date.getDay() !== 6) {
       return [...acc, weekdayKeyBuilder(date.getTime())];
