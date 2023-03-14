@@ -109,6 +109,30 @@ void goodbye(void)
   idle();
 }
 
+void newuser(byte *payload) {
+  String tag = "";
+
+  for (byte i = 0; i < sizeof(payload); i++)
+  {
+    if (payload[i] < 0x10)
+    {
+      tag += F(":0");
+    }
+    else
+    {
+      tag += F(":");
+    }
+    tag += String(payload[i], HEX);
+  }
+  beginDisp();
+
+  display.println();
+  display.println(tag);
+  display.display();
+  delay(30000);
+  idle();
+}
+
 bool isLoading = false;
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -116,13 +140,15 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println("Message arrived");
   if (String(topic) == "/user/inbound")
   {
-    Serial.println("/user/inbound");
     greet();
   }
   if (String(topic) == "/user/outbound")
   {
-    Serial.println("/user/outbound");
     goodbye();
+  }
+  if (String(topic) == "/user/unknown")
+  {
+    newuser(payload);
   }
   isLoading = false;
 }
@@ -198,6 +224,16 @@ void loading(void)
   }
 }
 
+void error(void) {
+  beginDisp();
+  display.println("Error");
+  display.display();
+  delay(2000);
+  idle();
+}
+
+int loadingTries = 0;
+
 void loop()
 {
   if (!mqttClient.connected())
@@ -207,9 +243,16 @@ void loop()
 
   mqttClient.loop();
 
-  if (isLoading)
+  if (isLoading && loadingTries < 5)
   {
     loading();
+    loadingTries++;
+  }
+  else if (isLoading && loadingTries >= 5)
+  {
+    loadingTries = 0;
+    isLoading = false;
+    error();
   }
 
   // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
