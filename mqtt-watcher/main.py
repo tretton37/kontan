@@ -16,6 +16,8 @@ def postUserCheck(client, uid):
 		client.publish("/user/inbound")
 	elif r.status_code == 409:
 		client.publish("/user/outbound")
+	elif r.status_code == 404:
+		client.publish("/user/unknown", uid)
 
 onUserCheckHandler = {
 	"topic": "/user/check",
