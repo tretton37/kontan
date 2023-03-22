@@ -16,10 +16,6 @@ export class RFIDService {
       return '/rfid/unknown';
     }
     const { status } = await this.officeService.checkUser(tag);
-    if (status === 'OUTBOUND') {
-      return '/rfid/outbound';
-    } else if (status === 'INBOUND') {
-      return '/rfid/inbound';
-    }
+    return `/rfid/${status.toLowerCase()}` as RFIDPubTopic;
   }
 }

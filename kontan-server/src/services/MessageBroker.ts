@@ -1,12 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  Client,
   onPublish,
   Packet,
   Payload,
   PigeonService,
   PubPacket,
-  Topic,
 } from 'pigeon-mqtt-nest';
 import { MQTTPublishPacket, PubTopic, SubTopic } from '../types';
 import { RFIDPubTopic, RFIDService } from './RFIDService';
@@ -23,7 +21,7 @@ export class MessageBroker {
     let pubPacket: PubPacket;
     switch (packet?.topic as SubTopic) {
       case '/rfid/check':
-        pubPacket = await this.RfidCheck(payload);
+        pubPacket = await this.RfidCheck(payload.replace(':', ''));
         break;
       default:
     }
@@ -49,10 +47,9 @@ class PubPacketBuilder<T extends PubTopic> implements MQTTPublishPacket<T> {
   topic: T;
   dup = false;
   retain = false;
-  clientId: string;
   constructor(props: Partial<MQTTPublishPacket<T>>) {
     this.qos = 0;
     this.topic = props.topic;
-    this.payload = props.topic ?? '';
+    this.payload = props.payload ?? '';
   }
 }
