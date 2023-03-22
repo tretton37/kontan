@@ -1,57 +1,58 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  Client,
   onPublish,
   Packet,
   Payload,
   PigeonService,
   PubPacket,
+  Topic,
 } from 'pigeon-mqtt-nest';
-import { UserService } from './UserService';
-import { OfficeService } from './OfficeService';
+import { MQTTPublishPacket, PubTopic, SubTopic } from '../types';
+import { RFIDPubTopic, RFIDService } from './RFIDService';
 
-type SubTopic = '/rfid/check';
-type PubTopic = '/rfid/inbound' | '/rfid/outbound' | '/rfid/unknown';
 @Injectable()
 export class MessageBroker {
   constructor(
     @Inject(PigeonService) private readonly pigeonService: PigeonService,
-    private readonly userService: UserService,
-    private readonly officeService: OfficeService,
+    private readonly RFIDService: RFIDService,
   ) {}
 
   @onPublish()
   async OnPublish(@Packet() packet: PubPacket, @Payload() payload: string) {
-    if (packet.topic.startsWith('$')) {
-      return;
-    }
-    let topic: PubTopic;
-    switch (packet.topic as SubTopic) {
+    let pubPacket: PubPacket;
+    switch (packet?.topic as SubTopic) {
       case '/rfid/check':
-        topic = await this.RfidCheck(payload);
+        pubPacket = await this.RfidCheck(payload);
         break;
       default:
     }
-    if (topic) {
-      await this.pigeonService.publish({
-        topic,
-        qos: 0,
-        cmd: 'publish',
-        payload: '',
-        dup: false,
-        retain: false,
-      });
+
+    if (pubPacket) {
+      await this.pigeonService.publish(pubPacket);
     }
   }
 
-  async RfidCheck(tag: string): Promise<PubTopic> {
-    if (!(await this.userService.tagExists(tag))) {
-      return '/rfid/unknown';
-    }
-    const { status } = await this.officeService.checkUser(tag);
-    if (status === 'OUTBOUND') {
-      return '/rfid/outbound';
-    } else if (status === 'INBOUND') {
-      return '/rfid/inbound';
-    }
+  async RfidCheck(tag: string): Promise<MQTTPublishPacket<RFIDPubTopic>> {
+    const topic = await this.RFIDService.CheckTag(tag);
+    return new PubPacketBuilder({
+      topic,
+      payload: tag,
+    });
+  }
+}
+
+class PubPacketBuilder<T extends PubTopic> implements MQTTPublishPacket<T> {
+  cmd: 'publish';
+  qos: 0 | 1 | 2;
+  payload: string | Buffer;
+  topic: T;
+  dup = false;
+  retain = false;
+  clientId: string;
+  constructor(props: Partial<MQTTPublishPacket<T>>) {
+    this.qos = 0;
+    this.topic = props.topic;
+    this.payload = props.topic ?? '';
   }
 }

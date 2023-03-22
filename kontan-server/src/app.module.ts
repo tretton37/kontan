@@ -6,23 +6,22 @@ import { OfficeService } from './services/OfficeService';
 import { Admin } from './services/Admin';
 import { SlackClient } from './services/SlackClient';
 import { ConfigModule } from '@nestjs/config';
-import { PigeonModule } from 'pigeon-mqtt-nest';
+import { PigeonModule, PigeonModuleOptions } from 'pigeon-mqtt-nest';
 import { MessageBroker } from './services/MessageBroker';
+import { RFIDService } from './services/RFIDService';
+
+const pigeonModuleOptions = {
+  port: 1883, // Port MQTT TCP Server
+  id: 'kontan-mqtt',
+  concurrency: 100,
+  queueLimit: 42,
+  maxClientsIdLength: 23,
+  connectTimeout: 30000,
+  heartbeatInterval: 60000,
+} satisfies PigeonModuleOptions;
 
 @Module({
-  imports: [
-    ConfigModule.forRoot(),
-    PigeonModule.forRoot({
-      port: '1883', // Port MQTT TCP Server
-      portWS: '1884', // Port MQTT WebSocket Server
-      id: 'kontan-mqtt',
-      concurrency: 100,
-      queueLimit: 42,
-      maxClientsIdLength: 23,
-      connectTimeout: 30000,
-      heartbeatInterval: 60000,
-    }),
-  ],
+  imports: [ConfigModule.forRoot(), PigeonModule.forRoot(pigeonModuleOptions)],
   controllers: [SlackController],
   providers: [
     UserService,
@@ -31,6 +30,7 @@ import { MessageBroker } from './services/MessageBroker';
     Admin,
     SlackClient,
     MessageBroker,
+    RFIDService,
   ],
 })
 export class AppModule {}
