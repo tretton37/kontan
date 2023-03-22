@@ -131,15 +131,15 @@ int loadingTries = 0;
 void callback(char *topic, byte *payload, unsigned int length)
 {
   Serial.println("Message arrived");
-  if (String(topic) == "/user/inbound")
+  if (String(topic) == "/rfid/inbound")
   {
     greet();
   }
-  if (String(topic) == "/user/outbound")
+  if (String(topic) == "/rfid/outbound")
   {
     goodbye();
   }
-  if (String(topic) == "/user/unknown")
+  if (String(topic) == "/rfid/unknown")
   {
     newuser(payload, length);
   }
@@ -157,9 +157,9 @@ bool connectToMqtt()
     if (mqttClient.connect(clientId.c_str(), "user", "pass"))
     {
       Serial.println("connected with clientId: " + clientId);
-      mqttClient.subscribe("/user/inbound");
-      mqttClient.subscribe("/user/outbound");
-      mqttClient.subscribe("/user/unknown");
+      mqttClient.subscribe("/rfid/inbound");
+      mqttClient.subscribe("/rfid/outbound");
+      mqttClient.subscribe("/rfid/unknown");
       mqttClient.setCallback(callback);
       return true;
     }
@@ -285,7 +285,7 @@ void loop()
   }
   Serial.println(F("TAG") + tag);
 
-  mqttClient.publish("/user/check", tag.c_str());
+  mqttClient.publish("/rfid/check", tag.c_str());
   isLoading = true;
 
   mfrc522.PICC_HaltA();
