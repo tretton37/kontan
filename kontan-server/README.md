@@ -61,4 +61,4 @@ Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update t
 Run the `pull-latest-and-restart.sh` script to pull the latest code and restart the kontan service. This script will also generate the start[env].sh scripts.
 
 ## Service Account 
-Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json
+Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json and serviceAccount.dev.json from the dev project
