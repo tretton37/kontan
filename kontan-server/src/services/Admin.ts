@@ -7,7 +7,11 @@ export class Admin {
   private app: App;
   public readonly db = () => getFirestore(this.app);
   constructor() {
-    import('../../serviceAccount.json').then((account) => {
+    const path =
+      process.env.NODE_ENV === 'production'
+        ? '../../serviceAccount.json'
+        : '../../serviceAccount.dev.json';
+    import(path).then((account) => {
       this.app = initializeApp({ credential: cert(account as ServiceAccount) });
     });
   }

@@ -42,3 +42,4 @@ startDev.sh
 startProd.sh
 
 serviceAccount.json
+serviceAccount.dev.json
