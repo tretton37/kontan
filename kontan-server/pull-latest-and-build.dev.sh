@@ -8,6 +8,6 @@ npm run build:dev
 
 # Generate start scripts
 echo "export PATH="$(npm config get prefix)"/bin/node:$PATH" > startDev.sh
-{ echo "cd "$(pwd)""; echo "npm run serve:dev"; echo "ngrok http localhost:8080 --log=stdout > ngrok.dev.log &"; } >> startDev.sh
+{ echo "cd "$(pwd)""; echo "sudo killall node"; echo "npm run serve:dev"; echo "ngrok http localhost:8080 --log=stdout > ngrok.dev.log &"; } >> startDev.sh
 
 sudo supervisorctl restart kontan-dev
