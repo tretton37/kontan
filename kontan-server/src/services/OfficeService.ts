@@ -49,7 +49,7 @@ export class OfficeService {
     const usersRef = this.admin.db().collection('users');
     let physicallyCheckedIn: User[] = [];
 
-    if (office.length > 0) {
+    if (office?.length > 0) {
       physicallyCheckedIn = (
         await usersRef.get().then((users) => {
           return users.docs.map((doc) => doc.data() as User);

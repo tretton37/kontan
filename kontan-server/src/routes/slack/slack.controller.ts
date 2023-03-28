@@ -1,61 +1,56 @@
-import { validateSlackRequest } from '../../validateSlackRequest';
 import { SlackEvent } from '../../types';
-import { Response } from 'express';
-import { Controller, HttpStatus, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { SlackService } from './slack.service';
-
+import { Response } from 'express';
 @Controller('slack')
 export class SlackController {
   constructor(private readonly service: SlackService) {}
 
   @Post('/event')
   async event(
-    @Req() request: Request,
+    @Body()
+    body: {
+      challenge: string;
+      event: SlackEvent;
+    },
     @Res() response: Response,
   ): Promise<string | void> {
-    if (!validateSlackRequest(request)) {
+    /*if (!this.service.validateSlackRequest(request)) {
       response
         .status(HttpStatus.BAD_REQUEST)
         .send('Error: Signature mismatch security error');
       return;
-    }
+    }*/
 
-    const body = await request.json();
-
-    const { challenge, event } = body satisfies {
-      challenge: string;
-      event: SlackEvent;
-    };
+    const { challenge, event } = body;
 
     if (challenge) {
-      // If slack pings this endpoint to verify it's valid
       response.send(challenge);
-      return;
+      return challenge;
     }
 
     if (event) {
       await this.service.handleEvent(event);
     }
+
+    response.send();
   }
 
   @Post('/interactive')
   async interactive(
-    @Req() request: Request,
+    @Body() body: any,
     @Res() response: Response,
   ): Promise<string | void> {
-    if (!validateSlackRequest(request)) {
+    /*if (!this.service.validateSlackRequest(request)) {
       response
         .status(HttpStatus.BAD_REQUEST)
         .send('Error: Signature mismatch security error');
       return;
-    }
-
-    const body = await request.json();
+    }*/
 
     const payload = JSON.parse(body.payload);
 
     await this.service.handleInteractive(payload);
-
-    response.status(200).send('OK');
+    response.send();
   }
 }
