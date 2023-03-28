@@ -29,7 +29,8 @@ export class SlackController {
 
     if (challenge) {
       // If slack pings this endpoint to verify it's valid
-      return challenge;
+      response.send(challenge);
+      return;
     }
 
     if (event) {
