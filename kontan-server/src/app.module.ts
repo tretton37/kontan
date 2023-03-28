@@ -10,18 +10,24 @@ import { PigeonModule, PigeonModuleOptions } from 'pigeon-mqtt-nest';
 import { MessageBroker } from './services/MessageBroker';
 import { RFIDService } from './services/RFIDService';
 
-const pigeonModuleOptions = {
-  port: 1883, // Port MQTT TCP Server
-  id: 'kontan-mqtt',
-  concurrency: 100,
-  queueLimit: 42,
-  maxClientsIdLength: 23,
-  connectTimeout: 30000,
-  heartbeatInterval: 60000,
-} satisfies PigeonModuleOptions;
-
 @Module({
-  imports: [ConfigModule.forRoot(), PigeonModule.forRoot(pigeonModuleOptions)],
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '.env.production'
+          : '.env.development',
+    }),
+    PigeonModule.forRoot({
+      port: process.env.NODE_ENV === 'production' ? 1883 : 1884, // Port MQTT TCP Server
+      id: 'kontan-mqtt',
+      concurrency: 100,
+      queueLimit: 42,
+      maxClientsIdLength: 23,
+      connectTimeout: 30000,
+      heartbeatInterval: 60000,
+    } satisfies PigeonModuleOptions),
+  ],
   controllers: [SlackController],
   providers: [
     UserService,

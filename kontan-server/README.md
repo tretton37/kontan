@@ -26,51 +26,39 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-## Installation
+# Installation
 
 ```bash
 $ npm install
 ```
 
-## Running the app
+## "Deploying" the app to your IoT device 
 
-```bash
-# development
-$ npm run start
+You want to make sure you have supervisor installed.
 
-# watch mode
-$ npm run start:dev
+Create a `.conf` file in `/etc/supervisor/conf.d/` and add the following:
 
-# production mode
-$ npm run start:prod
+```
+[program:kontan]
+command=/bin/bash /fullPathToRepo/kontan-server/startProd.sh
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/start.err.log
+stdout_logfile=/var/log/start.out.log
+
+[program:kontan-dev]
+command=/bin/bash /fullPathToRepo/kontan-server/startDev.sh
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/startdev.err.log
+stdout_logfile=/var/log/startdev.out.log
 ```
 
-## Test
+Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update the supervisor config.
 
-```bash
-# unit tests
-$ npm run test
+### Getting the latest code on your device
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+Run the `pull-latest-and-restart.sh` script to pull the latest code and restart the kontan service. This script will also generate the start[env].sh scripts.
 
 ## Service Account 
 Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json
