@@ -8,7 +8,6 @@ npm run build
 
 # Generate start scripts
 echo "export PATH="$(npm config get prefix)"/bin/node:$PATH" > startProd.sh
-echo "npm run serve:prod" >> startProd.sh
-echo "ngrok http 3000 --log=stdout > ngrok.prod.log &" >> startDev.sh
+{ echo "cd "$(pwd)""; echo "npm run serve:prod"; echo "ngrok http 3000 --log=stdout > ngrok.prod.log &"; } >> startProd.sh
 
 sudo supervisorctl restart kontan
