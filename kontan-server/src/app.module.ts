@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PigeonModule, PigeonModuleOptions } from 'pigeon-mqtt-nest';
 import { MessageBroker } from './services/MessageBroker';
 import { RFIDService } from './services/RFIDService';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RFIDService } from './services/RFIDService';
       connectTimeout: 30000,
       heartbeatInterval: 60000,
     } satisfies PigeonModuleOptions),
+    ScheduleModule.forRoot(),
   ],
   controllers: [SlackController],
   providers: [

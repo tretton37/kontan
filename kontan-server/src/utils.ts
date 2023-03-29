@@ -22,7 +22,7 @@ export const weekdayKeyToDayStr = (key: string, long = true) => {
  * @desc Returns an array keys to the upcoming weekdays from today
  * @return {string[]}
  */
-export const getUpcomingWeekdayKeys = () => {
+export const getUpcomingWeekdayKeys = (ignoreWeekend = true) => {
   const today = Date.now();
   return new Array(13)
     .fill(null)
@@ -30,7 +30,7 @@ export const getUpcomingWeekdayKeys = () => {
       return new Date(today + i * 24 * 60 * 60 * 1000);
     })
     .reduce((acc, date) => {
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
+      if (!ignoreWeekend || (date.getDay() !== 0 && date.getDay() !== 6)) {
         return [...acc, weekdayKeyBuilder(date.getTime())];
       } else {
         return acc;

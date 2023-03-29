@@ -28,7 +28,7 @@ export class OfficeService {
   async incrementDays(): Promise<void> {
     const ref = this.admin.db().collection('presence').doc('weekday');
     const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
-    const dayKeys = getUpcomingWeekdayKeys();
+    const dayKeys = getUpcomingWeekdayKeys(false);
     const data = (await ref.get()).data() as Weekday;
     delete data?.[yesterday];
     data[dayKeys[dayKeys.length - 1]] = [];
@@ -50,11 +50,12 @@ export class OfficeService {
     let physicallyCheckedIn: User[] = [];
 
     if (office?.length > 0) {
-      physicallyCheckedIn = (
-        await usersRef.get().then((users) => {
-          return users.docs.map((doc) => doc.data() as User);
-        })
-      ).filter((user) => office.includes(user.tag));
+      physicallyCheckedIn =
+        (
+          await usersRef.get().then((users) => {
+            return users.docs.map((doc) => doc.data() as User);
+          })
+        )?.filter((user) => office.includes(user.tag)) ?? [];
     }
     const weekdaySnap = await this.admin
       .db()
@@ -143,7 +144,7 @@ export class OfficeService {
       if (dates.includes(key)) {
         data[key] = [...new Set([...data[key], userId])];
       } else {
-        data[key] = data[key].filter((id) => id !== userId);
+        data[key] = data[key]?.filter((id) => id !== userId) ?? [];
       }
     });
 
