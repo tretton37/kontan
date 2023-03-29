@@ -99,10 +99,13 @@ export class SlackService {
     });
   }
 
-  validateSlackRequest(request: Request) {
+  validateSlackRequest(
+    request: Request,
+    requestBody: Buffer,
+    headers: Headers,
+  ) {
     const slackAppSigningSecret = process.env.SLACK_SIGNING_SECRET as string;
-    const requestBody = request.body;
-    const timestamp = Number(request.headers['x-slack-request-timestamp']);
+    const timestamp = Number(headers['x-slack-request-timestamp']);
 
     // verify that the timestamp does not differ from local time by more than
     // five minutes
@@ -110,6 +113,7 @@ export class SlackService {
       !timestamp ||
       Math.abs(Math.floor(new Date().getTime() / 1000) - timestamp) > 60 * 5
     ) {
+      console.log('NO TIMESTAMP OR LOCAL TIME DIFF > 5 MIN');
       return false;
     }
 
@@ -117,7 +121,7 @@ export class SlackService {
     const baseStr = `v0:${timestamp}:${requestBody}`;
 
     // extract the received signature from the request headers
-    const receivedSignature = request.headers['x-slack-signature'] as string;
+    const receivedSignature = headers['x-slack-signature'] as string;
 
     // compute the signature using the basestring
     // and hashing it using the signing secret

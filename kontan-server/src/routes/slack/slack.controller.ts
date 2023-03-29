@@ -1,5 +1,14 @@
 import { SlackEvent } from '../../types';
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  Headers,
+  RawBodyRequest,
+} from '@nestjs/common';
 import { SlackService } from './slack.service';
 import { Response } from 'express';
 @Controller('slack')
@@ -12,21 +21,22 @@ export class SlackController {
     body: {
       challenge: string;
       event: SlackEvent;
-    },
+    } & Body,
+    @Headers() headers,
+    @Req() request: RawBodyRequest<Request>,
     @Res() response: Response,
   ): Promise<string | void> {
-    /*if (!this.service.validateSlackRequest(request)) {
-      response
-        .status(HttpStatus.BAD_REQUEST)
-        .send('Error: Signature mismatch security error');
-      return;
-    }*/
-
     const { challenge, event } = body;
 
     if (challenge) {
       response.send(challenge);
       return challenge;
+    }
+    if (!this.service.validateSlackRequest(request, request.rawBody, headers)) {
+      response
+        .status(HttpStatus.BAD_REQUEST)
+        .send('Error: Signature mismatch security error');
+      return;
     }
 
     if (event) {
@@ -39,14 +49,16 @@ export class SlackController {
   @Post('/interactive')
   async interactive(
     @Body() body: any,
+    @Headers() headers,
+    @Req() request: RawBodyRequest<Request>,
     @Res() response: Response,
   ): Promise<string | void> {
-    /*if (!this.service.validateSlackRequest(request)) {
+    if (!this.service.validateSlackRequest(request, request.rawBody, headers)) {
       response
         .status(HttpStatus.BAD_REQUEST)
         .send('Error: Signature mismatch security error');
       return;
-    }*/
+    }
 
     const payload = JSON.parse(body.payload);
 
