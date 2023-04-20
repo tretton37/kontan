@@ -185,7 +185,7 @@ void setup()
   {
     status("connected " + String(ssid), false, 2, 2000);
   }
-  mqttClient.setServer("10.11.15.106", 1883);
+  mqttClient.setServer("10.11.15.95", 1883);
   while (!Serial)
     ;                                // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
   SPI.begin();                       // Init SPI bus

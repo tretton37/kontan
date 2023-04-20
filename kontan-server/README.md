@@ -39,19 +39,42 @@ You want to make sure you have supervisor installed.
 Create a `.conf` file in `/etc/supervisor/conf.d/` and add the following:
 
 ```
-[program:kontan]
+[program:kontan-server]
 command=/bin/bash /fullPathToRepo/kontan-server/startProd.sh
 autostart=true
 autorestart=true
-stderr_logfile=/var/log/start.err.log
-stdout_logfile=/var/log/start.out.log
+stderr_logfile=/var/log/prod.err.log
+stdout_logfile=/var/log/prod.out.log
 
-[program:kontan-dev]
+[program:kontan-tunnel]
+command=/bin/bash /fullPathToRepo/kontan-server/startProd.tunnel.sh
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/prod.tunnel.err.log
+stdout_logfile=/var/log/prod.tunnel.out.log
+
+[group:kontan]
+programs=kontan-server,kontan-tunnel
+priority=999
+
+[program:kontan-dev-server]
 command=/bin/bash /fullPathToRepo/kontan-server/startDev.sh
 autostart=true
 autorestart=true
-stderr_logfile=/var/log/startdev.err.log
-stdout_logfile=/var/log/startdev.out.log
+stderr_logfile=/var/log/dev.err.log
+stdout_logfile=/var/log/dev.out.log
+
+[program:kontan-dev-tunnel]
+command=/bin/bash /fullPathToRepo/kontan-server/startDev.tunnel.sh
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/dev.tunnel.err.log
+stdout_logfile=/var/log/dev.tunnel.out.log
+
+[group:kontan-dev]
+programs=kontan-dev-server,kontan-dev-tunnel
+priority=998
+
 ```
 
 Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update the supervisor config.
