@@ -52,6 +52,7 @@ autostart=true
 autorestart=true
 stderr_logfile=/var/log/prod.tunnel.err.log
 stdout_logfile=/var/log/prod.tunnel.out.log
+stopsignal=QUIT
 
 [group:kontan]
 programs=kontan-server,kontan-tunnel
@@ -66,7 +67,7 @@ stdout_logfile=/var/log/dev.out.log
 
 [program:kontan-dev-tunnel]
 command=/bin/bash /fullPathToRepo/kontan-server/startDev.tunnel.sh
-autostart=true
+autostart=true//
 autorestart=true
 stderr_logfile=/var/log/dev.tunnel.err.log
 stdout_logfile=/var/log/dev.tunnel.out.log
