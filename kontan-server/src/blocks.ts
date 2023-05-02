@@ -157,11 +157,11 @@ export const homeScreen = ({
   const initialOptions = new Array<Option>();
   const inputOptions = new Array<Option>();
   const keys = getUpcomingWeekdayKeys();
-  keys.forEach((key) => {
+  keys.forEach((key, index) => {
     const inputOption = {
       text: {
         type: 'plain_text',
-        text: `${weekdayKeyToDayStr(key, false)}`,
+        text: index === 0 ? `Today` : `${weekdayKeyToDayStr(key, false)}`,
         emoji: true,
       },
       value: `weekdayCheckbox-${key}`,
@@ -270,6 +270,7 @@ export const homeScreen = ({
         type: 'divider',
       },
       ...plannedPresence
+        .slice(1)
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',
