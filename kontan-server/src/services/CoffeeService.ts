@@ -14,7 +14,7 @@ export class CoffeeService {
       cups +
       ` freshly brewed cup${
         cups === 1 ? '' : 's'
-      } of coffee now available in the kitchen!`
+      } of :coffee: now available in the kitchen!`
     );
   }
 
