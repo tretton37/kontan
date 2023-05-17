@@ -47,6 +47,22 @@ export class SlackService {
     }
   }
 
+  async scheduleBotHomeMessage(
+    user: string,
+    text: string,
+    inMinutesFromNow = 1,
+  ) {
+    await this.web.chat.scheduleMessage({
+      channel: user,
+      text,
+      post_at: Math.ceil(Date.now() / 1000) + inMinutesFromNow * 60,
+    });
+  }
+
+  async sendBotHomeMessage(user: string, text: string) {
+    await this.web.chat.postMessage({ channel: user, text });
+  }
+
   async handleInteractive(payload: any) {
     if (payload.type === 'block_actions') {
       const { value, action_id, selected_options } = payload

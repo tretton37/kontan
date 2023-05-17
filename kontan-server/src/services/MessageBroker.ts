@@ -8,12 +8,14 @@ import {
 } from 'pigeon-mqtt-nest';
 import { MQTTPublishPacket, PubTopic, SubTopic } from '../types';
 import { RFIDPubTopic, RFIDService } from './RFIDService';
+import { CoffeeService } from './CoffeeService';
 
 @Injectable()
 export class MessageBroker {
   constructor(
     @Inject(PigeonService) private readonly pigeonService: PigeonService,
     private readonly RFIDService: RFIDService,
+    private readonly coffeeService: CoffeeService,
   ) {}
 
   @onPublish()
@@ -22,6 +24,9 @@ export class MessageBroker {
     switch (packet?.topic as SubTopic) {
       case '/rfid/check':
         pubPacket = await this.RfidCheck(payload.replace(':', ''));
+        break;
+      case '/coffee/brew':
+        await this.Brew(Number(payload));
         break;
       default:
     }
@@ -37,6 +42,10 @@ export class MessageBroker {
       topic,
       payload: tag,
     });
+  }
+
+  async Brew(cups: number): Promise<void> {
+    await this.coffeeService.handleBrewEvent(cups);
   }
 }
 
