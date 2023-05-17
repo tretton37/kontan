@@ -10,6 +10,7 @@ import { PigeonModule, PigeonModuleOptions } from 'pigeon-mqtt-nest';
 import { MessageBroker } from './services/MessageBroker';
 import { RFIDService } from './services/RFIDService';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CoffeeService } from './services/CoffeeService';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     SlackClient,
     MessageBroker,
     RFIDService,
+    CoffeeService,
   ],
 })
 export class AppModule {}
