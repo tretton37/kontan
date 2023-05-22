@@ -9,6 +9,7 @@ import {
 import { MQTTPublishPacket, PubTopic, SubTopic } from '../types';
 import { RFIDPubTopic, RFIDService } from './RFIDService';
 import { CoffeeService } from './CoffeeService';
+import { UserService } from './UserService';
 
 @Injectable()
 export class MessageBroker {
@@ -16,14 +17,15 @@ export class MessageBroker {
     @Inject(PigeonService) private readonly pigeonService: PigeonService,
     private readonly RFIDService: RFIDService,
     private readonly coffeeService: CoffeeService,
+    private readonly userService: UserService,
   ) {}
 
   @onPublish()
   async OnPublish(@Packet() packet: PubPacket, @Payload() payload: string) {
-    let pubPacket: PubPacket;
+    let pubPackets: PubPacket[];
     switch (packet?.topic as SubTopic) {
       case '/rfid/check':
-        pubPacket = await this.RfidCheck(payload.replace(':', ''));
+        pubPackets = await this.RfidCheck(payload.replace(':', ''));
         break;
       case '/coffee/brew':
         await this.Brew(Number(payload));
@@ -31,21 +33,38 @@ export class MessageBroker {
       default:
     }
 
-    if (pubPacket) {
-      await this.pigeonService.publish(pubPacket);
+    if (!!pubPackets.length) {
+      await this.PublishPackets(pubPackets);
     }
   }
 
-  async RfidCheck(tag: string): Promise<MQTTPublishPacket<RFIDPubTopic>> {
-    const topic = await this.RFIDService.CheckTag(tag);
-    return new PubPacketBuilder({
-      topic,
-      payload: tag,
-    });
+  async RfidCheck(
+    tag: string,
+  ): Promise<MQTTPublishPacket<RFIDPubTopic | string>[]> {
+    const status = await this.RFIDService.CheckTag(tag);
+    const user = await this.userService.getUserByTag(tag);
+    return [
+      new PubPacketBuilder({
+        topic: `/rfid/${status}`,
+        payload: tag,
+      }),
+      new PubPacketBuilder({
+        topic: `/ttv/${status}`,
+        payload: user?.name ?? status,
+      }),
+    ];
   }
 
   async Brew(cups: number): Promise<void> {
     await this.coffeeService.handleBrewEvent(cups);
+  }
+
+  async PublishPackets<T extends PubTopic>(
+    packets: Array<MQTTPublishPacket<T>>,
+  ) {
+    await Promise.all(
+      packets.map(async (packet) => await this.pigeonService.publish(packet)),
+    );
   }
 }
 

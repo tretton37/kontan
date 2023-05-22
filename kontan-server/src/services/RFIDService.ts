@@ -4,6 +4,7 @@ import { UserService } from './UserService';
 
 export type RFIDSubTopic = '/rfid/check';
 export type RFIDPubTopic = '/rfid/inbound' | '/rfid/outbound' | '/rfid/unknown';
+export type RFIDStatus = 'inbound' | 'outbound' | 'unknown';
 @Injectable()
 export class RFIDService {
   constructor(
@@ -11,11 +12,11 @@ export class RFIDService {
     private readonly officeService: OfficeService,
   ) {}
 
-  async CheckTag(tag: string): Promise<RFIDPubTopic> {
+  async CheckTag(tag: string): Promise<RFIDStatus> {
     if (!(await this.userService.tagExists(tag))) {
-      return '/rfid/unknown';
+      return 'unknown';
     }
     const { status } = await this.officeService.checkUser(tag);
-    return `/rfid/${status.toLowerCase()}` as RFIDPubTopic;
+    return status.toLowerCase() as RFIDStatus;
   }
 }
