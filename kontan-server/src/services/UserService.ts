@@ -36,4 +36,14 @@ export class UserService {
     const snapshot = await ref.get();
     return !snapshot.empty;
   }
+
+  async getUserByTag(tagId: string) {
+    const ref = this.admin.db().collection('users').where('tag', 'in', [tagId]);
+    const snapshot = await ref.get();
+    if (!snapshot.empty) {
+      const data = await snapshot.docs?.[0].data();
+      return data as User;
+    }
+    return undefined;
+  }
 }
