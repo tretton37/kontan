@@ -33,7 +33,7 @@ export class MessageBroker {
       default:
     }
 
-    if (!!pubPackets.length) {
+    if (!!pubPackets?.length) {
       await this.PublishPackets(pubPackets);
     }
   }
