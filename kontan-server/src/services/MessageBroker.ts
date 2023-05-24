@@ -50,7 +50,10 @@ export class MessageBroker {
       }),
       new PubPacketBuilder({
         topic: '/ttv',
-        payload: `${user?.name ?? 'someone'} ${status}`,
+        payload: this.RFIDService.GetPresenceMessage(
+          status,
+          user?.name ?? 'whats-your-face',
+        ),
       }),
     ];
   }
