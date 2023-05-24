@@ -10,6 +10,7 @@ import { MQTTPublishPacket, PubTopic, SubTopic } from '../types';
 import { RFIDPubTopic, RFIDService } from './RFIDService';
 import { CoffeeService } from './CoffeeService';
 import { UserService } from './UserService';
+import { Event, NotifyService } from './NotifyService';
 
 @Injectable()
 export class MessageBroker {
@@ -18,6 +19,7 @@ export class MessageBroker {
     private readonly RFIDService: RFIDService,
     private readonly coffeeService: CoffeeService,
     private readonly userService: UserService,
+    private readonly notifyService: NotifyService,
   ) {}
 
   @onPublish()
@@ -30,12 +32,20 @@ export class MessageBroker {
       case '/coffee/brew':
         await this.Brew(Number(payload));
         break;
+      case '/eventnotify': {
+        await this.EventNotify(payload);
+        break;
+      }
       default:
     }
 
     if (!!pubPackets?.length) {
       await this.PublishPackets(pubPackets);
     }
+  }
+
+  async EventNotify(payload: string) {
+    await this.notifyService.handleEvent(payload as Event);
   }
 
   async RfidCheck(
