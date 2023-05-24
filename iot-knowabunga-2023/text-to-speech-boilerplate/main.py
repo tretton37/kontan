@@ -7,17 +7,16 @@ import paho.mqtt.client as mqtt
 def on_connect(client, userdata, flags, rc):
     print("connected to the mqtt server")
     
-    client.subscribe("/ttv/unknown")
-    client.subscribe("/ttv/inbound")
-    client.subscribe("/ttv/outbound")
+    client.subscribe("/ttv")
 
 def bind_on_message(textToSpeech: Callable[[str], None]):
 	def on_message(client, userdata, msg):
 		# The callback for when a PUBLISH message is received from the server.
-		username = msg.payload.decode("utf-8")
+		message = msg.payload.decode("utf-8")
 
 		# Use the 'textToSpeech(string)' function to create a personalized message.
-		print(f"received the message {username} on the topic {msg.topic}")
+		print(f"received the message {message} on the topic {msg.topic}")
+		textToSpeech(message)
 
 	return on_message
 
@@ -27,12 +26,12 @@ def main():
 
 	engine = pyttsx3.init()
 	# The 'rate' property controls the voice speed.
-	engine.setProperty('rate', 50) 
+	engine.setProperty('rate', 100) 
 
 	def textToSpeech(text: str):
 		engine.say(text)
 		engine.runAndWait()
-		
+	
 	client = mqtt.Client()
 	client.on_connect = on_connect
 	client.on_message = bind_on_message(textToSpeech)

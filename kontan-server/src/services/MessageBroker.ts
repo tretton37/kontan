@@ -49,8 +49,8 @@ export class MessageBroker {
         payload: tag,
       }),
       new PubPacketBuilder({
-        topic: `/ttv/${status}`,
-        payload: user?.name ?? status,
+        topic: '/ttv',
+        payload: `${user?.name ?? 'someone'} ${status}`,
       }),
     ];
   }
