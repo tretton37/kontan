@@ -11,6 +11,7 @@ import { MessageBroker } from './services/MessageBroker';
 import { RFIDService } from './services/RFIDService';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CoffeeService } from './services/CoffeeService';
+import { NotifyService } from './services/NotifyService';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { CoffeeService } from './services/CoffeeService';
     MessageBroker,
     RFIDService,
     CoffeeService,
+    NotifyService,
   ],
 })
 export class AppModule {}
