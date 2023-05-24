@@ -49,8 +49,11 @@ export class MessageBroker {
         payload: tag,
       }),
       new PubPacketBuilder({
-        topic: `/ttv/${status}`,
-        payload: user?.name ?? status,
+        topic: '/ttv',
+        payload: this.RFIDService.GetPresenceMessage(
+          status,
+          user?.name ?? 'whats-your-face',
+        ),
       }),
     ];
   }

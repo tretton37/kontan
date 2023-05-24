@@ -18,10 +18,9 @@ To override what mqtt server to connect to simply set the environment variable `
 `MQTT_HOSTNAME=localhost python3 main.py`
 
 
-To test it simply publish mqtt messages containing the username as a raw payload to the following topics:
+To test it simply publish mqtt messages containing the tts-message as a raw payload to the following topic:
 ```
-/ttv/inbound
-/ttv/outbound
+/ttv
 ```
 
 ## Dependencies
