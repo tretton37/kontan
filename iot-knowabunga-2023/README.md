@@ -19,7 +19,9 @@ Apart from the ones covered in the ESP32 tutorial there's also a limited number 
 Create an ESP32 powered webserver: https://electropeak.com/learn/create-a-web-server-w-esp32/
 
 #### HC-SR501 PIR motion detection sensor
-[Tutorial and documentation](https://lastminuteengineers.com/pir-sensor-arduino-tutorial/)
+[Documentation](https://cdn.shopify.com/s/files/1/1509/1638/files/Bewegungsmelder_Modul_Datenblatt.pdf?352607869924912987)
+
+[Tutorial](https://lastminuteengineers.com/pir-sensor-arduino-tutorial/)
 
 #### KY-015 DHT 11 temperature and humidity sensor
 [Documentation](https://cdn.shopify.com/s/files/1/1509/1638/files/DHT_11_Temperatursensor_Modul_Datenblatt_a59ef62a-ee56-4c72-918f-00cb97f71f64.pdf?16953870400002276923)
