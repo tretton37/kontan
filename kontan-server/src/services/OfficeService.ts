@@ -66,7 +66,7 @@ export class OfficeService {
       weekdayKeyBuilder(Date.now())
     ]) as User['slackUserId'][];
     let plannedForToday: User[] = [];
-    if (userIds.length > 0) {
+    if (userIds?.length > 0) {
       const plannedForTodayRef = await usersRef
         .where('slackUserId', 'in', userIds)
         .get();
