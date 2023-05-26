@@ -12,6 +12,7 @@ import {
   weekdayKeyToDayStr,
   weekdayKeyBuilder,
 } from './utils';
+import { User } from './services/UserService';
 
 export const ACTIONS = {
   REGISTER_BUTTON: 'register_button',
@@ -19,6 +20,7 @@ export const ACTIONS = {
   SUBMIT: 'view_submission',
   DAY_CHECKBOX: 'day_button',
   REFRESH_BUTTON: 'refresh_button',
+  OFFICE_SELECT: 'office_select',
 };
 
 export const BLOCK_IDS = {
@@ -101,6 +103,13 @@ export const registerModal: ModalView = {
       type: 'divider',
     },
     {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: 'NFC Tag is only used in Helsingborg',
+      },
+    },
+    {
       type: 'section',
       text: {
         type: 'plain_text',
@@ -131,6 +140,7 @@ export const registerModal: ModalView = {
         text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
         emoji: true,
       },
+      optional: true,
     },
   ],
 };
@@ -149,16 +159,31 @@ const getUserStatus = (status: Status): string => {
 export const homeScreen = ({
   presentUsers,
   plannedPresence,
-  userId,
+  user,
+  offices,
 }: {
   presentUsers: InboundDto[];
   plannedPresence: UpcomingPresenceDto[];
-  userId: string;
+  user: User;
+  offices: string[];
 }): View => {
   const initialOptions = new Array<Option>();
   const inputOptions = new Array<Option>();
   const keys = getUpcomingWeekdayKeys();
   const today = weekdayKeyBuilder(Date.now());
+  const officeNames = offices.map((office) => {
+    return {
+      text: {
+        type: 'plain_text',
+        text: `${office}`,
+      },
+      value: `${office}`,
+    } as Option;
+  });
+  const initialOfficeOption = officeNames.find(
+    (office) => office.value === user.office,
+  );
+
   keys.forEach((key) => {
     const inputOption = {
       text: {
@@ -178,13 +203,51 @@ export const homeScreen = ({
     if (
       plannedPresence.find(
         (presence) =>
-          presence.users.some((user) => user.slackUserId === userId) &&
-          key === presence.key,
+          presence.users.some(
+            (user) => user.slackUserId === user.slackUserId,
+          ) && key === presence.key,
       )
     ) {
       initialOptions.push(inputOption);
     }
   });
+
+  const todayBlocks = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: ':office: Today',
+      },
+    },
+    ...presentUsers.map((user) => {
+      return {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${user.name} - ${getUserStatus(user.status)}`,
+        },
+      };
+    }),
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: 'Refresh',
+            emoji: true,
+          },
+          value: ACTIONS.REFRESH_BUTTON,
+          action_id: ACTIONS.REFRESH_BUTTON,
+        },
+      ],
+    },
+    {
+      type: 'divider',
+    },
+  ];
 
   return {
     type: 'home',
@@ -205,6 +268,25 @@ export const homeScreen = ({
       },
       {
         type: 'divider',
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: 'Select an office',
+        },
+        accessory: {
+          action_id: ACTIONS.OFFICE_SELECT,
+          type: 'static_select',
+          placeholder: {
+            type: 'plain_text',
+            text: 'Office',
+          },
+          options: officeNames,
+          ...(initialOfficeOption && {
+            initial_option: initialOfficeOption,
+          }),
+        },
       },
       {
         type: 'header',
@@ -237,42 +319,13 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: ':office: Today',
-        },
-      },
-      ...presentUsers.map((user) => {
-        return {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `${user.name} - ${getUserStatus(user.status)}`,
-          },
-        };
-      }),
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: {
-              type: 'plain_text',
-              text: 'Refresh',
-              emoji: true,
-            },
-            value: ACTIONS.REFRESH_BUTTON,
-            action_id: ACTIONS.REFRESH_BUTTON,
-          },
-        ],
-      },
-      {
-        type: 'divider',
-      },
+      ...(initialOfficeOption.value === 'Helsingborg' ? todayBlocks : []),
       ...plannedPresence
-        .filter((item) => item.key !== today)
+        .filter(
+          (item) =>
+            initialOfficeOption.value !== 'Helsingborg' ||
+            (initialOfficeOption.value === 'Helsingborg' && item.key !== today),
+        )
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',

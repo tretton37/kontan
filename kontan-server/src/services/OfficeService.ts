@@ -26,13 +26,19 @@ type Weekday = Record<string, User['slackUserId'][]>;
 export class OfficeService {
   constructor(private readonly admin: Admin) {}
   async incrementDays(): Promise<void> {
-    const ref = this.admin.db().collection('presence').doc('weekday');
-    const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
-    const dayKeys = getUpcomingWeekdayKeys(false);
-    const data = (await ref.get()).data() as Weekday;
-    delete data?.[yesterday];
-    data[dayKeys[dayKeys.length - 1]] = [];
-    await ref.set({ ...data });
+    const offices = this.getOffices();
+    (await offices).forEach(async function (value) {
+      const ref = this.admin
+        .db()
+        .collection('presence')
+        .doc(`weekday_${value}`);
+      const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
+      const dayKeys = getUpcomingWeekdayKeys(false);
+      const data = (await ref.get()).data() as Weekday;
+      delete data?.[yesterday];
+      data[dayKeys[dayKeys.length - 1]] = [];
+      await ref.set({ ...data });
+    });
   }
 
   async resetInbound(): Promise<void> {
@@ -40,27 +46,27 @@ export class OfficeService {
     await ref.set({ office: {} });
   }
 
-  async whoIsInbound(): Promise<InboundDto[]> {
+  async whoIsInbound(office: string): Promise<InboundDto[]> {
     const ref = this.admin.db().collection('presence').doc('state');
     const snapshot = await ref.get();
 
     const presence = snapshot.data() as OfficePresence;
-    const office = Object.keys(presence.office);
+    const officePresence = Object.keys(presence.office);
     const usersRef = this.admin.db().collection('users');
     let physicallyCheckedIn: User[] = [];
 
-    if (office?.length > 0) {
+    if (officePresence?.length > 0) {
       physicallyCheckedIn =
         (
           await usersRef.get().then((users) => {
             return users.docs.map((doc) => doc.data() as User);
           })
-        )?.filter((user) => office.includes(user.tag)) ?? [];
+        )?.filter((user) => officePresence.includes(user.tag)) ?? [];
     }
     const weekdaySnap = await this.admin
       .db()
       .collection('presence')
-      .doc('weekday')
+      .doc(`weekday_${office}`)
       .get();
     const userIds = (await weekdaySnap.data()?.[
       weekdayKeyBuilder(Date.now())
@@ -96,13 +102,16 @@ export class OfficeService {
     return Object.values(userMap).sort((a, b) => (a.name > b.name ? 1 : -1));
   }
 
-  async getPlannedPresence(): Promise<UpcomingPresenceDto[]> {
+  async getPlannedPresence(office: string): Promise<UpcomingPresenceDto[]> {
     const snap = await this.admin
       .db()
       .collection('presence')
-      .doc('weekday')
+      .doc(`weekday_${office}`)
       .get();
-    const weekday = (await snap.data()) as Weekday;
+    const weekday = snap.data() as Weekday;
+    if (!weekday) {
+      return [];
+    }
     const keys = getUpcomingWeekdayKeys();
     const userIdSet = [
       ...new Set(
@@ -111,6 +120,9 @@ export class OfficeService {
           .flat(),
       ),
     ];
+    if (userIdSet.length === 0) {
+      return [];
+    }
     const userSnap = await this.admin
       .db()
       .collection('users')
@@ -131,20 +143,19 @@ export class OfficeService {
     }, []);
   }
 
-  async setPlannedPresence(
-    dates: string[],
-    userId: User['slackUserId'],
-  ): Promise<void> {
-    const ref = this.admin.db().collection('presence').doc('weekday');
+  async setPlannedPresence(dates: string[], user: User): Promise<void> {
+    const office = user.office ?? 'Helsingborg';
+    const ref = this.admin.db().collection('presence').doc(`weekday_${office}`);
 
     const keys = getUpcomingWeekdayKeys();
     const data = (await ref.get()).data() as Weekday;
+    if (!data) return;
 
     keys.forEach((key) => {
       if (dates.includes(key)) {
-        data[key] = [...new Set([...data[key], userId])];
+        data[key] = [...new Set([...data[key], user.slackUserId])];
       } else {
-        data[key] = data[key]?.filter((id) => id !== userId) ?? [];
+        data[key] = data[key]?.filter((id) => id !== user.slackUserId) ?? [];
       }
     });
 
@@ -173,5 +184,13 @@ export class OfficeService {
       });
       return { status: 'OUTBOUND' };
     }
+  }
+
+  async getOffices(): Promise<string[]> {
+    const documents = await this.admin
+      .db()
+      .collection('offices')
+      .listDocuments();
+    return documents.map((doc) => doc.id);
   }
 }

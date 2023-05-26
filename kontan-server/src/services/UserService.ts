@@ -7,6 +7,7 @@ export interface User {
   name: string;
   username: string;
   slackUserId: string;
+  office: string;
 }
 @Injectable()
 export class UserService {
@@ -14,7 +15,10 @@ export class UserService {
     private readonly admin: Admin,
     private readonly web: SlackClient,
   ) {}
-  async createUser({ tag, slackUserId }: User) {
+  async createUser({ tag, slackUserId, office }: User) {
+    if (await this.userExists(slackUserId)) {
+      return;
+    }
     const { user } = await this.web.users.info({ user: slackUserId });
     const ref = this.admin.db().collection('users').doc(slackUserId);
     await ref.set({
@@ -22,6 +26,7 @@ export class UserService {
       name: user?.real_name,
       tag,
       slackUserId,
+      office,
     });
   }
 
@@ -29,6 +34,15 @@ export class UserService {
     const ref = this.admin.db().collection('users').doc(slackUserId);
     const snapshot = await ref.get();
     return snapshot.exists;
+  }
+
+  async getUser(slackUserId: string) {
+    const ref = await this.admin
+      .db()
+      .collection('users')
+      .doc(slackUserId)
+      .get();
+    return ref.data() as User;
   }
 
   async tagExists(tagId: string) {
@@ -45,5 +59,12 @@ export class UserService {
       return data as User;
     }
     return undefined;
+  }
+
+  async updateUser(slackUserId: string, office: string) {
+    const ref = this.admin.db().collection('users').doc(slackUserId);
+    await ref.update({
+      office,
+    });
   }
 }

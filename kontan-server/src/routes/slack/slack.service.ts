@@ -20,6 +20,7 @@ export interface Action {
   type: string;
   action_ts: string;
   selected_options: { value: string }[];
+  selected_option: { value: string };
 }
 
 @Injectable()
@@ -65,7 +66,7 @@ export class SlackService {
 
   async handleInteractive(payload: any) {
     if (payload.type === 'block_actions') {
-      const { value, action_id, selected_options } = payload
+      const { value, action_id, selected_options, selected_option } = payload
         ?.actions?.[0] as Action;
       if (value === ACTIONS.REGISTER_BUTTON) {
         await this.web.views.open({
@@ -81,7 +82,15 @@ export class SlackService {
         const values = selected_options.map(({ value }) =>
           value.replace('weekdayCheckbox-', ''),
         );
-        await this.officeService.setPlannedPresence(values, payload.user.id);
+        const user = await this.userService.getUser(payload.user.id);
+        await this.officeService.setPlannedPresence(values, user);
+        await this.showHomeScreen(payload.user.id);
+      }
+      if (action_id === ACTIONS.OFFICE_SELECT) {
+        await this.userService.updateUser(
+          payload.user.id,
+          selected_option.value,
+        );
         await this.showHomeScreen(payload.user.id);
       }
     }
@@ -97,6 +106,7 @@ export class SlackService {
         tag,
         username,
         name,
+        office: null,
       });
       await this.showHomeScreen(id);
       return;
@@ -104,14 +114,19 @@ export class SlackService {
   }
 
   async showHomeScreen(userId: string) {
-    const [presentUsers, plannedPresence] = await Promise.all([
-      this.officeService.whoIsInbound(),
-      this.officeService.getPlannedPresence(),
+    const user = await this.userService.getUser(userId);
+    if (!user.office) {
+      user.office = 'Helsingborg';
+    }
+    const [presentUsers, plannedPresence, offices] = await Promise.all([
+      this.officeService.whoIsInbound(user.office),
+      this.officeService.getPlannedPresence(user.office),
+      this.officeService.getOffices(),
     ]);
 
     await this.web.views.publish({
       user_id: userId,
-      view: homeScreen({ presentUsers, plannedPresence, userId }),
+      view: homeScreen({ presentUsers, plannedPresence, user, offices }),
     });
   }
 
