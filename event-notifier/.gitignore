@@ -1,0 +1,7 @@
+.pio/build
+.pio/libdeps/esp32dev/*
+!.pio/libdeps/esp32dev/TFT_eSPI/
+.pio/libdeps/esp32dev/TFT_eSPI/*
+!.pio/libdeps/esp32dev/TFT_eSPI/User_Setup.h
+.vscode/
+**/vars.h
