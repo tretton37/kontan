@@ -10,6 +10,7 @@ import {
   getUpcomingWeekdayKeys,
   getWeek,
   weekdayKeyToDayStr,
+  weekdayKeyBuilder,
 } from './utils';
 
 export const ACTIONS = {
@@ -157,11 +158,12 @@ export const homeScreen = ({
   const initialOptions = new Array<Option>();
   const inputOptions = new Array<Option>();
   const keys = getUpcomingWeekdayKeys();
-  keys.forEach((key, index) => {
+  const today = weekdayKeyBuilder(Date.now());
+  keys.forEach((key) => {
     const inputOption = {
       text: {
         type: 'plain_text',
-        text: index === 0 ? `Today` : `${weekdayKeyToDayStr(key, false)}`,
+        text: key === today ? `Today` : `${weekdayKeyToDayStr(key, false)}`,
         emoji: true,
       },
       value: `weekdayCheckbox-${key}`,
@@ -270,7 +272,7 @@ export const homeScreen = ({
         type: 'divider',
       },
       ...plannedPresence
-        .slice(1)
+        .filter((item) => item.key !== today)
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',
