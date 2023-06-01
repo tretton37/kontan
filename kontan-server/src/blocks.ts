@@ -4,6 +4,7 @@ import {
   InboundDto,
   Status,
   UpcomingPresenceDto,
+  Office,
 } from './services/OfficeService';
 import {
   getDay,
@@ -106,7 +107,7 @@ export const registerModal: ModalView = {
       type: 'header',
       text: {
         type: 'plain_text',
-        text: 'NFC Tag is only used in Helsingborg',
+        text: 'NFC Tag is only used in Helsingborg for now',
       },
     },
     {
@@ -165,7 +166,7 @@ export const homeScreen = ({
   presentUsers: InboundDto[];
   plannedPresence: UpcomingPresenceDto[];
   user: User;
-  offices: string[];
+  offices: Office[];
 }): View => {
   const initialOptions = new Array<Option>();
   const inputOptions = new Array<Option>();
@@ -175,11 +176,13 @@ export const homeScreen = ({
     return {
       text: {
         type: 'plain_text',
-        text: `${office}`,
+        text: `${office.id}`,
       },
-      value: `${office}`,
+      value: `${office.id}`,
     } as Option;
   });
+
+  const office = offices.find((office) => office.id === user.office);
   const initialOfficeOption = officeNames.find(
     (office) => office.value === user.office,
   );
@@ -319,12 +322,10 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
-      ...(initialOfficeOption.value === 'Helsingborg' ? todayBlocks : []),
+      ...(office.hasState ? todayBlocks : []),
       ...plannedPresence
         .filter(
-          (item) =>
-            initialOfficeOption.value !== 'Helsingborg' ||
-            (initialOfficeOption.value === 'Helsingborg' && item.key !== today),
+          (item) => !office.hasState || (office.hasState && item.key !== today),
         )
         .map(({ weekday, users }) => {
           const noOne = {

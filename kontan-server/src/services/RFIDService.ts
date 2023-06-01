@@ -37,7 +37,7 @@ export class RFIDService {
     if (!(await this.userService.tagExists(tag))) {
       return 'unknown';
     }
-    const { status } = await this.officeService.checkUser(tag);
+    const { status } = await this.officeService.checkUser(tag, 'Helsingborg');
     return status.toLowerCase() as RFIDStatus;
   }
 

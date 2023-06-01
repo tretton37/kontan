@@ -20,18 +20,23 @@ export interface UpcomingPresenceDto {
   users: User[];
 }
 
+export interface Office {
+  id: string;
+  hasState: boolean;
+}
+
 type Weekday = Record<string, User['slackUserId'][]>;
 
 @Injectable()
 export class OfficeService {
   constructor(private readonly admin: Admin) {}
   async incrementDays(): Promise<void> {
-    const offices = this.getOffices();
-    (await offices).forEach(async function (value) {
+    const offices = await this.getOffices();
+    offices.forEach(async function (office) {
       const ref = this.admin
         .db()
         .collection('presence')
-        .doc(`weekday_${value}`);
+        .doc(`weekday_${office.id}`);
       const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
       const dayKeys = getUpcomingWeekdayKeys(false);
       const data = (await ref.get()).data() as Weekday;
@@ -42,12 +47,20 @@ export class OfficeService {
   }
 
   async resetInbound(): Promise<void> {
-    const ref = this.admin.db().collection('presence').doc('state');
-    await ref.set({ office: {} });
+    const offices = await this.getOffices();
+    offices.forEach(async function (office) {
+      if (office.hasState) {
+        const ref = this.admin
+          .db()
+          .collection('presence')
+          .doc(`state_${office.id}`);
+        await ref.set({ office: {} });
+      }
+    });
   }
 
   async whoIsInbound(office: string): Promise<InboundDto[]> {
-    const ref = this.admin.db().collection('presence').doc('state');
+    const ref = this.admin.db().collection('presence').doc(`state_${office}`);
     const snapshot = await ref.get();
 
     const presence = snapshot.data() as OfficePresence;
@@ -144,7 +157,8 @@ export class OfficeService {
   }
 
   async setPlannedPresence(dates: string[], user: User): Promise<void> {
-    const office = user.office ?? 'Helsingborg';
+    const offices = await this.getOffices();
+    const office = user.office ?? offices[0].id;
     const ref = this.admin.db().collection('presence').doc(`weekday_${office}`);
 
     const keys = getUpcomingWeekdayKeys();
@@ -162,8 +176,11 @@ export class OfficeService {
     await ref.set({ ...data });
   }
 
-  async checkUser(tag: User['tag']): Promise<{ status: Status }> {
-    const ref = this.admin.db().collection('presence').doc('state');
+  async checkUser(
+    tag: User['tag'],
+    office: string,
+  ): Promise<{ status: Status }> {
+    const ref = this.admin.db().collection('presence').doc(`state_${office}`);
     const snapshot = await ref.get();
     const presence = snapshot.data() as OfficePresence;
     if (
@@ -186,11 +203,13 @@ export class OfficeService {
     }
   }
 
-  async getOffices(): Promise<string[]> {
-    const documents = await this.admin
-      .db()
-      .collection('offices')
-      .listDocuments();
-    return documents.map((doc) => doc.id);
+  async getOffices(): Promise<Office[]> {
+    const snapshot = await this.admin.db().collection('offices').get();
+    const offices = new Array<Office>();
+    snapshot.forEach((doc) => {
+      offices.push(doc.data() as Office);
+    });
+
+    return offices;
   }
 }

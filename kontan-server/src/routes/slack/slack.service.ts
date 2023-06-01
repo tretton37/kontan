@@ -115,13 +115,16 @@ export class SlackService {
 
   async showHomeScreen(userId: string) {
     const user = await this.userService.getUser(userId);
+    const offices = await this.officeService.getOffices();
     if (!user.office) {
-      user.office = 'Helsingborg';
+      user.office = offices[0].id;
     }
-    const [presentUsers, plannedPresence, offices] = await Promise.all([
-      this.officeService.whoIsInbound(user.office),
+
+    const office = offices.find((office) => office.id === user.office);
+
+    const [presentUsers, plannedPresence] = await Promise.all([
+      office.hasState ? this.officeService.whoIsInbound(user.office) : [],
       this.officeService.getPlannedPresence(user.office),
-      this.officeService.getOffices(),
     ]);
 
     await this.web.views.publish({
