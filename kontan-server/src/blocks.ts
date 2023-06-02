@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { ModalView, View, Option } from '@slack/web-api';
+import { ModalView, View, PlainTextOption } from '@slack/web-api';
 import {
   InboundDto,
   Status,
@@ -26,6 +26,7 @@ export const ACTIONS = {
 
 export const BLOCK_IDS = {
   NFC_SERIAL: 'nfc_serial',
+  HOME_OFFICE: 'home_office',
 };
 
 export const newUserBlock: View = {
@@ -66,84 +67,114 @@ export const newUserBlock: View = {
   ],
 };
 
-export const registerModal: ModalView = {
-  type: 'modal',
-  title: {
-    type: 'plain_text',
-    text: 'Register to Kontan',
-    emoji: true,
-  },
-  submit: {
-    type: 'plain_text',
-    text: 'Submit :tada:',
-    emoji: true,
-  },
-  close: {
-    type: 'plain_text',
-    text: 'Cancel',
-    emoji: true,
-  },
-  blocks: [
-    {
-      type: 'section',
+export const registerModal = (offices: Office[]): ModalView => {
+  const officeNames = offices.map((office) => {
+    return {
       text: {
         type: 'plain_text',
-        text: "OK so you're ready to sign up?",
-        emoji: true,
+        text: `${office.id}`,
       },
+      value: `${office.id}`,
+    } as PlainTextOption;
+  });
+
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: 'Register to Kontan',
+      emoji: true,
     },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'By using this app, when applicable and when you choose to share that information, others will see your office presence.',
-        emoji: true,
+    submit: {
+      type: 'plain_text',
+      text: 'Submit :tada:',
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Cancel',
+      emoji: true,
+    },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: "OK so you're ready to sign up?",
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'header',
-      text: {
-        type: 'plain_text',
-        text: 'NFC Tag is only used in Helsingborg for now',
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'By using this app, when applicable and when you choose to share that information, others will see your office presence.',
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'The only thing I need is your NFC Tag serial number and then we can start interacting',
-        emoji: true,
+      {
+        type: 'input',
+        element: {
+          type: 'static_select',
+          action_id: BLOCK_IDS.HOME_OFFICE + '-action',
+          placeholder: {
+            type: 'plain_text',
+            text: 'Office',
+          },
+          options: officeNames,
+        },
+        block_id: BLOCK_IDS.HOME_OFFICE,
+        label: {
+          type: 'plain_text',
+          text: 'Select a home office',
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'You could choose any NFC tag, but it will be convenient if you choose the same as the one you unlock the door with',
-        emoji: true,
+      {
+        type: 'divider',
       },
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'input',
-      element: {
-        type: 'plain_text_input',
-        action_id: BLOCK_IDS.NFC_SERIAL + '-action',
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'NFC Tag is only used in Helsingborg for now',
+        },
       },
-      block_id: BLOCK_IDS.NFC_SERIAL,
-      label: {
-        type: 'plain_text',
-        text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
-        emoji: true,
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'The only thing I need is your NFC Tag serial number and then we can start interacting',
+          emoji: true,
+        },
       },
-      optional: true,
-    },
-  ],
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'You could choose any NFC tag, but it will be convenient if you choose the same as the one you unlock the door with',
+          emoji: true,
+        },
+      },
+      {
+        type: 'divider',
+      },
+      {
+        type: 'input',
+        element: {
+          type: 'plain_text_input',
+          action_id: BLOCK_IDS.NFC_SERIAL + '-action',
+        },
+        block_id: BLOCK_IDS.NFC_SERIAL,
+        label: {
+          type: 'plain_text',
+          text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
+          emoji: true,
+        },
+        optional: true,
+      },
+    ],
+  };
 };
 
 const getUserStatus = (status: Status): string => {
@@ -152,6 +183,8 @@ const getUserStatus = (status: Status): string => {
       return ':white_check_mark:';
     case 'OUTBOUND':
       return '_Checked out_ :house_with_garden:';
+    case 'PLANNED_NO_TAG':
+      return '_No tag_ :shrug:';
     default:
       return '_Not checked in yet_';
   }
@@ -168,8 +201,8 @@ export const homeScreen = ({
   user: User;
   offices: Office[];
 }): View => {
-  const initialOptions = new Array<Option>();
-  const inputOptions = new Array<Option>();
+  const initialOptions = new Array<PlainTextOption>();
+  const inputOptions = new Array<PlainTextOption>();
   const keys = getUpcomingWeekdayKeys();
   const today = weekdayKeyBuilder(Date.now());
   const officeNames = offices.map((office) => {
@@ -179,7 +212,7 @@ export const homeScreen = ({
         text: `${office.id}`,
       },
       value: `${office.id}`,
-    } as Option;
+    } as PlainTextOption;
   });
 
   const office = offices.find((office) => office.id === user.office);
@@ -201,7 +234,7 @@ export const homeScreen = ({
           text: `_Week ${getWeek(key)}_`,
         },
       }),
-    } as unknown as Option;
+    } as unknown as PlainTextOption;
     inputOptions.push(inputOption);
     if (
       plannedPresence.find(
@@ -275,7 +308,7 @@ export const homeScreen = ({
       {
         type: 'section',
         text: {
-          type: 'mrkdwn',
+          type: 'plain_text',
           text: 'Select an office',
         },
         accessory: {

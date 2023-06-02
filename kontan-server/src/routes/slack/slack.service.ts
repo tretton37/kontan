@@ -69,9 +69,10 @@ export class SlackService {
       const { value, action_id, selected_options, selected_option } = payload
         ?.actions?.[0] as Action;
       if (value === ACTIONS.REGISTER_BUTTON) {
+        const offices = await this.officeService.getOffices();
         await this.web.views.open({
           user_id: payload.user.id,
-          view: registerModal,
+          view: registerModal(offices),
           trigger_id: payload.trigger_id,
         });
       }
@@ -96,17 +97,21 @@ export class SlackService {
     }
 
     if (payload.type === ACTIONS.SUBMIT) {
+      const homeOffice =
+        payload.view.state.values[BLOCK_IDS.HOME_OFFICE][
+          BLOCK_IDS.HOME_OFFICE + '-action'
+        ].selected_option.value;
       const tag =
         payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
           BLOCK_IDS.NFC_SERIAL + '-action'
-        ]?.value;
+        ]?.value ?? 'NO_TAG';
       const { id, username, name } = payload.user;
       await this.userService.createUser({
         slackUserId: id,
         tag,
         username,
         name,
-        office: null,
+        office: homeOffice,
       });
       await this.showHomeScreen(id);
       return;

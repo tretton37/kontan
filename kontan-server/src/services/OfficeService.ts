@@ -7,7 +7,7 @@ import {
 } from '../utils';
 import { User } from './UserService';
 
-export type Status = 'INBOUND' | 'OUTBOUND' | 'PLANNED';
+export type Status = 'INBOUND' | 'OUTBOUND' | 'PLANNED' | 'PLANNED_NO_TAG';
 export interface InboundDto extends User {
   status: Status;
 }
@@ -22,10 +22,14 @@ export interface UpcomingPresenceDto {
 
 export interface Office {
   id: string;
-  hasState: boolean;
+  hasState?: boolean;
 }
 
 type Weekday = Record<string, User['slackUserId'][]>;
+
+const getPlannedStatus = (tag: string) => {
+  return tag === 'NO_TAG' ? 'PLANNED_NO_TAG' : 'PLANNED';
+};
 
 @Injectable()
 export class OfficeService {
@@ -107,7 +111,7 @@ export class OfficeService {
           ...user,
           status: checkedInSet.has(user.slackUserId)
             ? presence.office[user.tag].status
-            : 'PLANNED',
+            : getPlannedStatus(user.tag),
         },
       };
     }, {});
