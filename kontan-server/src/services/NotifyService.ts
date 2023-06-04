@@ -18,7 +18,7 @@ export class NotifyService {
   ) {}
 
   async handleEvent(event: Event) {
-    const inbound = await this.officeService.whoIsInbound();
+    const inbound = await this.officeService.whoIsInbound('Helsingborg');
     await Promise.all(
       inbound.map(async (user) => {
         if (user.status === 'INBOUND') {

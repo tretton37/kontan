@@ -20,6 +20,7 @@ export interface Action {
   type: string;
   action_ts: string;
   selected_options: { value: string }[];
+  selected_option: { value: string };
 }
 
 @Injectable()
@@ -65,12 +66,13 @@ export class SlackService {
 
   async handleInteractive(payload: any) {
     if (payload.type === 'block_actions') {
-      const { value, action_id, selected_options } = payload
+      const { value, action_id, selected_options, selected_option } = payload
         ?.actions?.[0] as Action;
       if (value === ACTIONS.REGISTER_BUTTON) {
+        const offices = await this.officeService.getOffices();
         await this.web.views.open({
           user_id: payload.user.id,
-          view: registerModal,
+          view: registerModal(offices),
           trigger_id: payload.trigger_id,
         });
       }
@@ -81,22 +83,35 @@ export class SlackService {
         const values = selected_options.map(({ value }) =>
           value.replace('weekdayCheckbox-', ''),
         );
-        await this.officeService.setPlannedPresence(values, payload.user.id);
+        const user = await this.userService.getUser(payload.user.id);
+        await this.officeService.setPlannedPresence(values, user);
+        await this.showHomeScreen(payload.user.id);
+      }
+      if (action_id === ACTIONS.OFFICE_SELECT) {
+        await this.userService.updateUser(
+          payload.user.id,
+          selected_option.value,
+        );
         await this.showHomeScreen(payload.user.id);
       }
     }
 
     if (payload.type === ACTIONS.SUBMIT) {
+      const homeOffice =
+        payload.view.state.values[BLOCK_IDS.HOME_OFFICE][
+          BLOCK_IDS.HOME_OFFICE + '-action'
+        ].selected_option.value;
       const tag =
         payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
           BLOCK_IDS.NFC_SERIAL + '-action'
-        ]?.value;
+        ]?.value ?? 'NO_TAG';
       const { id, username, name } = payload.user;
       await this.userService.createUser({
         slackUserId: id,
         tag,
         username,
         name,
+        office: homeOffice,
       });
       await this.showHomeScreen(id);
       return;
@@ -104,14 +119,22 @@ export class SlackService {
   }
 
   async showHomeScreen(userId: string) {
+    const user = await this.userService.getUser(userId);
+    const offices = await this.officeService.getOffices();
+    if (!user.office) {
+      user.office = offices[0].id;
+    }
+
+    const office = offices.find((office) => office.id === user.office);
+
     const [presentUsers, plannedPresence] = await Promise.all([
-      this.officeService.whoIsInbound(),
-      this.officeService.getPlannedPresence(),
+      office.hasState ? this.officeService.whoIsInbound(user.office) : [],
+      this.officeService.getPlannedPresence(user.office),
     ]);
 
     await this.web.views.publish({
       user_id: userId,
-      view: homeScreen({ presentUsers, plannedPresence, userId }),
+      view: homeScreen({ presentUsers, plannedPresence, user, offices }),
     });
   }
 

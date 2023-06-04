@@ -19,7 +19,7 @@ export class CoffeeService {
   }
 
   async handleBrewEvent(cups: number) {
-    const inbound = await this.office.whoIsInbound();
+    const inbound = await this.office.whoIsInbound('Helsingborg');
     await Promise.all(
       inbound.map(async (user) => {
         if (user.status === 'INBOUND') {

@@ -1,9 +1,10 @@
 /* eslint-disable max-len */
-import { ModalView, View, Option } from '@slack/web-api';
+import { ModalView, View, PlainTextOption } from '@slack/web-api';
 import {
   InboundDto,
   Status,
   UpcomingPresenceDto,
+  Office,
 } from './services/OfficeService';
 import {
   getDay,
@@ -12,6 +13,7 @@ import {
   weekdayKeyToDayStr,
   weekdayKeyBuilder,
 } from './utils';
+import { User } from './services/UserService';
 
 export const ACTIONS = {
   REGISTER_BUTTON: 'register_button',
@@ -19,10 +21,12 @@ export const ACTIONS = {
   SUBMIT: 'view_submission',
   DAY_CHECKBOX: 'day_button',
   REFRESH_BUTTON: 'refresh_button',
+  OFFICE_SELECT: 'office_select',
 };
 
 export const BLOCK_IDS = {
   NFC_SERIAL: 'nfc_serial',
+  HOME_OFFICE: 'home_office',
 };
 
 export const newUserBlock: View = {
@@ -63,76 +67,114 @@ export const newUserBlock: View = {
   ],
 };
 
-export const registerModal: ModalView = {
-  type: 'modal',
-  title: {
-    type: 'plain_text',
-    text: 'Register to Kontan',
-    emoji: true,
-  },
-  submit: {
-    type: 'plain_text',
-    text: 'Submit :tada:',
-    emoji: true,
-  },
-  close: {
-    type: 'plain_text',
-    text: 'Cancel',
-    emoji: true,
-  },
-  blocks: [
-    {
-      type: 'section',
+export const registerModal = (offices: Office[]): ModalView => {
+  const officeNames = offices.map((office) => {
+    return {
       text: {
         type: 'plain_text',
-        text: "OK so you're ready to sign up?",
-        emoji: true,
+        text: `${office.id}`,
       },
+      value: `${office.id}`,
+    } as PlainTextOption;
+  });
+
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: 'Register to Kontan',
+      emoji: true,
     },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'By using this app, when applicable and when you choose to share that information, others will see your office presence.',
-        emoji: true,
+    submit: {
+      type: 'plain_text',
+      text: 'Submit :tada:',
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Cancel',
+      emoji: true,
+    },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: "OK so you're ready to sign up?",
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'The only thing I need is your NFC Tag serial number and then we can start interacting',
-        emoji: true,
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'By using this app, when applicable and when you choose to share that information, others will see your office presence.',
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'plain_text',
-        text: 'You could choose any NFC tag, but it will be convenient if you choose the same as the one you unlock the door with',
-        emoji: true,
+      {
+        type: 'input',
+        element: {
+          type: 'static_select',
+          action_id: BLOCK_IDS.HOME_OFFICE + '-action',
+          placeholder: {
+            type: 'plain_text',
+            text: 'Office',
+          },
+          options: officeNames,
+        },
+        block_id: BLOCK_IDS.HOME_OFFICE,
+        label: {
+          type: 'plain_text',
+          text: 'Select a home office',
+          emoji: true,
+        },
       },
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'input',
-      element: {
-        type: 'plain_text_input',
-        action_id: BLOCK_IDS.NFC_SERIAL + '-action',
+      {
+        type: 'divider',
       },
-      block_id: BLOCK_IDS.NFC_SERIAL,
-      label: {
-        type: 'plain_text',
-        text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
-        emoji: true,
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'NFC Tag is only used in Helsingborg for now',
+        },
       },
-    },
-  ],
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'The only thing I need is your NFC Tag serial number and then we can start interacting',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'You could choose any NFC tag, but it will be convenient if you choose the same as the one you unlock the door with',
+          emoji: true,
+        },
+      },
+      {
+        type: 'divider',
+      },
+      {
+        type: 'input',
+        element: {
+          type: 'plain_text_input',
+          action_id: BLOCK_IDS.NFC_SERIAL + '-action',
+        },
+        block_id: BLOCK_IDS.NFC_SERIAL,
+        label: {
+          type: 'plain_text',
+          text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
+          emoji: true,
+        },
+        optional: true,
+      },
+    ],
+  };
 };
 
 const getUserStatus = (status: Status): string => {
@@ -141,6 +183,8 @@ const getUserStatus = (status: Status): string => {
       return ':white_check_mark:';
     case 'OUTBOUND':
       return '_Checked out_ :house_with_garden:';
+    case 'PLANNED_NO_TAG':
+      return '_No tag_ :shrug:';
     default:
       return '_Not checked in yet_';
   }
@@ -149,16 +193,33 @@ const getUserStatus = (status: Status): string => {
 export const homeScreen = ({
   presentUsers,
   plannedPresence,
-  userId,
+  user,
+  offices,
 }: {
   presentUsers: InboundDto[];
   plannedPresence: UpcomingPresenceDto[];
-  userId: string;
+  user: User;
+  offices: Office[];
 }): View => {
-  const initialOptions = new Array<Option>();
-  const inputOptions = new Array<Option>();
+  const initialOptions = new Array<PlainTextOption>();
+  const inputOptions = new Array<PlainTextOption>();
   const keys = getUpcomingWeekdayKeys();
   const today = weekdayKeyBuilder(Date.now());
+  const officeNames = offices.map((office) => {
+    return {
+      text: {
+        type: 'plain_text',
+        text: `${office.id}`,
+      },
+      value: `${office.id}`,
+    } as PlainTextOption;
+  });
+
+  const office = offices.find((office) => office.id === user.office);
+  const initialOfficeOption = officeNames.find(
+    (office) => office.value === user.office,
+  );
+
   keys.forEach((key) => {
     const inputOption = {
       text: {
@@ -173,18 +234,56 @@ export const homeScreen = ({
           text: `_Week ${getWeek(key)}_`,
         },
       }),
-    } as unknown as Option;
+    } as unknown as PlainTextOption;
     inputOptions.push(inputOption);
     if (
       plannedPresence.find(
         (presence) =>
-          presence.users.some((user) => user.slackUserId === userId) &&
-          key === presence.key,
+          presence.users.some(
+            (user) => user.slackUserId === user.slackUserId,
+          ) && key === presence.key,
       )
     ) {
       initialOptions.push(inputOption);
     }
   });
+
+  const todayBlocks = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: ':office: Today',
+      },
+    },
+    ...presentUsers.map((user) => {
+      return {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${user.name} - ${getUserStatus(user.status)}`,
+        },
+      };
+    }),
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: 'Refresh',
+            emoji: true,
+          },
+          value: ACTIONS.REFRESH_BUTTON,
+          action_id: ACTIONS.REFRESH_BUTTON,
+        },
+      ],
+    },
+    {
+      type: 'divider',
+    },
+  ];
 
   return {
     type: 'home',
@@ -205,6 +304,25 @@ export const homeScreen = ({
       },
       {
         type: 'divider',
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'Select an office',
+        },
+        accessory: {
+          action_id: ACTIONS.OFFICE_SELECT,
+          type: 'static_select',
+          placeholder: {
+            type: 'plain_text',
+            text: 'Office',
+          },
+          options: officeNames,
+          ...(initialOfficeOption && {
+            initial_option: initialOfficeOption,
+          }),
+        },
       },
       {
         type: 'header',
@@ -237,42 +355,11 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: ':office: Today',
-        },
-      },
-      ...presentUsers.map((user) => {
-        return {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `${user.name} - ${getUserStatus(user.status)}`,
-          },
-        };
-      }),
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: {
-              type: 'plain_text',
-              text: 'Refresh',
-              emoji: true,
-            },
-            value: ACTIONS.REFRESH_BUTTON,
-            action_id: ACTIONS.REFRESH_BUTTON,
-          },
-        ],
-      },
-      {
-        type: 'divider',
-      },
+      ...(office.hasState ? todayBlocks : []),
       ...plannedPresence
-        .filter((item) => item.key !== today)
+        .filter(
+          (item) => !office.hasState || (office.hasState && item.key !== today),
+        )
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',
