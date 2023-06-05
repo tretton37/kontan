@@ -36,7 +36,7 @@ export const newUserBlock: View = {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: 'Hello! :tada: It seems this is the first time you are using *@Kontan*. To use this app, you must first register. You need the serial number of the NFC tag you use at the Hbg office, this can be retrieved whith NFC Tools app. Should look something like this: `e9:c0:0s:33`',
+        text: 'Hello! :tada: It seems this is the first time you are using *@Kontan*. To use this app, you must first register. If you have an NFC tag you want to use for checking in at the Helsingborg office, you need the serial number of that tag. This can be retrieved with the NFC Tools app. Should look something like this: `e9:c0:0s:33`',
       },
     },
     {
