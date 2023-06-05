@@ -239,9 +239,8 @@ export const homeScreen = ({
     if (
       plannedPresence.find(
         (presence) =>
-          presence.users.some(
-            (user) => user.slackUserId === user.slackUserId,
-          ) && key === presence.key,
+          presence.users.some((usr) => usr.slackUserId === user.slackUserId) &&
+          key === presence.key,
       )
     ) {
       initialOptions.push(inputOption);
