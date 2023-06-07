@@ -36,7 +36,7 @@ export class OfficeService {
   constructor(private readonly admin: Admin) {}
   async incrementDays(): Promise<void> {
     const offices = await this.getOffices();
-    offices.forEach(async function (office) {
+    offices.forEach(async (office) => {
       const ref = this.admin
         .db()
         .collection('presence')
@@ -52,7 +52,7 @@ export class OfficeService {
 
   async resetInbound(): Promise<void> {
     const offices = await this.getOffices();
-    offices.forEach(async function (office) {
+    offices.forEach(async (office) => {
       if (office.hasState) {
         const ref = this.admin
           .db()
