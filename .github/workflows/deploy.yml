@@ -12,7 +12,7 @@ jobs:
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
         run: |
-          working-directory: /home/kontan/kontan-server
+          working-directory: ~/kontan/kontan-server
           npm install
           npm run build
   deploy:
