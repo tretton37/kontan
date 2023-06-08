@@ -6,14 +6,17 @@ on:
 jobs:
   build-and-install:
     runs-on: self-hosted
+    working-directory: /home/kontan/kontan-server
     steps:
       - uses: actions/checkout@v3
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
-        working-directory: /home/kontan/kontan-server
         run: |
           npm install
           npm run build
-          sudo killall node
+
+      - name: Restart and run
+        run: |
           sudo killall ngrok
+          sudo killall node
           sudo supervisorctl restart kontan:*
