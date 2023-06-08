@@ -82,7 +82,9 @@ Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update t
 
 ### Getting the latest code on your device
 
-Run the `pull-latest-and-restart.sh` script to pull the latest code and restart the kontan service. This script will also generate the start[env].sh scripts.
+Connect to the Node.js server by SSH `ssh kontan@10.11.15.95` and change dir to kontan/kontan-server. Run the `pull-latest-and-build.sh` script to pull the latest code and restart the kontan service. This script will also generate the start[env].sh scripts. Verify that everything is ok by running `sudo supervisorctl status`. Ignore the status `kontan:kontan-tunnel FATAL Exited too quickly (process log may have details)`.
+
+If the slack app is down you probably need to restart the ngrok tunnel. Run `sudo killall ngrok` and `sudo bash startProd.tunnel.sh`
 
 ## Service Account 
 Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json and serviceAccount.dev.json from the dev project
