@@ -1,0 +1,27 @@
+name: Deploy
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+
+      # Setup virtual env, install dependencies
+      - name: Create new virtual env and activate it
+        run: |
+          npm run install
+          npm run build
+  deploy:
+    runs-on: self-hosted
+    needs: build
+
+    steps:
+      # Kill gunicorn server, if running already
+      - name: Restart services
+        run: |
+          sudo killall node
+          sudo killall ngrok
+          sudo supervisorctl restart kontan:*
