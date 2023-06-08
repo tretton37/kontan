@@ -12,6 +12,7 @@ jobs:
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
         run: |
+          cd kontan-server/
           npm run install
           npm run build
   deploy:
