@@ -57,34 +57,19 @@ stopsignal=QUIT
 [group:kontan]
 programs=kontan-server,kontan-tunnel
 priority=999
-
-[program:kontan-dev-server]
-command=/bin/bash /fullPathToRepo/kontan-server/startDev.sh
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/dev.err.log
-stdout_logfile=/var/log/dev.out.log
-
-[program:kontan-dev-tunnel]
-command=/bin/bash /fullPathToRepo/kontan-server/startDev.tunnel.sh
-autostart=true//
-autorestart=true
-stderr_logfile=/var/log/dev.tunnel.err.log
-stdout_logfile=/var/log/dev.tunnel.out.log
-
-[group:kontan-dev]
-programs=kontan-dev-server,kontan-dev-tunnel
-priority=998
-
 ```
 
 Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update the supervisor config.
 
 ### Getting the latest code on your device
 
-Connect to the Node.js server by SSH `ssh kontan@10.11.15.95` and change dir to kontan/kontan-server. Run the `pull-latest-and-build.sh` script to pull the latest code and restart the kontan service. This script will also generate the start[env].sh scripts. Verify that everything is ok by running `sudo supervisorctl status`. Ignore the status `kontan:kontan-tunnel FATAL Exited too quickly (process log may have details)`.
+Set up a gh runner on your rPi.
 
-If the slack app is down you probably need to restart the ngrok tunnel. Run `sudo killall ngrok` and `sudo bash startProd.tunnel.sh`
+You'll need the following dependencies: 
+
+- Supervisor 
+- ngrok 
+- node 
 
 ## Service Account 
 Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json and serviceAccount.dev.json from the dev project
