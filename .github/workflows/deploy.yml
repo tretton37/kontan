@@ -11,7 +11,7 @@ jobs:
 
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
-        working-directory: ~/kontan/kontan-server
+        working-directory: /home/kontan/kontan-server
         run: |
           npm install
           npm run build
