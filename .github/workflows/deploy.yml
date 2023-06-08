@@ -3,20 +3,28 @@ on:
   push:
     branches: [ main ]
 
+defaults:
+  run:
+    working-directory: '~/kontan/kontan-server/'
+
+
 jobs:
   build-and-install:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
+        with:
+          path: ~/kontan
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
-        working-directory: /home/kontan/kontan-server/
         run: |
           npm install
           npm run build
 
       - name: Restart and run
         run: |
-          sudo killall ngrok
+          echo "sudo killall ngrok" > startProd.tunnel.sh
+          echo "ngrok http --config=$HOME/.config/ngrok/ngrok.yml --subdomain=kontan localhost:3000 --log=stdout > /var/log/ngrok.prod.log &" >> startProd.tunnel.sh
           sudo killall node
+          sudo killall ngrok
           sudo supervisorctl restart kontan:*
