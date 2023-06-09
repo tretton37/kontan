@@ -3,6 +3,7 @@ import { SlackController } from './routes/slack/slack.controller';
 import { UserService } from './services/UserService';
 import { SlackService } from './routes/slack/slack.service';
 import { OfficeService } from './services/OfficeService';
+import { ScheduleService } from './services/ScheduleService';
 import { Admin } from './services/Admin';
 import { SlackClient } from './services/SlackClient';
 import { ConfigModule } from '@nestjs/config';
@@ -37,6 +38,7 @@ import { NotifyService } from './services/NotifyService';
     UserService,
     SlackService,
     OfficeService,
+    ScheduleService,
     Admin,
     SlackClient,
     MessageBroker,
