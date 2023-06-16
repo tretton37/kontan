@@ -7,9 +7,8 @@ export class ScheduleService {
   private readonly logger = new Logger(ScheduleService.name);
 
   constructor(private readonly officeService: OfficeService) {}
-  @Cron('*/10 * * * *')
+  @Cron('0 0 * * *')
   async handleCron() {
-    this.logger.log('ScheduleService executed');
     await this.officeService.resetInbound();
     await this.officeService.incrementDays();
   }
