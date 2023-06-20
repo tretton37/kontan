@@ -215,9 +215,13 @@ export const homeScreen = ({
     } as PlainTextOption;
   });
 
-  const office = offices.find((office) => office.id === user.office);
   const initialOfficeOption = officeNames.find(
     (office) => office.value === user.office,
+  );
+
+  const currentUser = plannedPresence.find(
+    (presence) =>
+      presence.users.some((usr) => usr.slackUserId === user.slackUserId)[0],
   );
 
   keys.forEach((key) => {
@@ -272,6 +276,27 @@ export const homeScreen = ({
           text: {
             type: 'plain_text',
             text: 'Refresh',
+            emoji: true,
+          },
+          value: ACTIONS.REFRESH_BUTTON,
+          action_id: ACTIONS.REFRESH_BUTTON,
+        },
+      ],
+    },
+    {
+      type: 'divider',
+    },
+  ];
+
+  const checkinBlocks = [
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: currentUser.status === 'INBOUND' ? 'Check out' : 'Check in',
             emoji: true,
           },
           value: ACTIONS.REFRESH_BUTTON,
@@ -354,11 +379,10 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
-      ...(office.hasState ? todayBlocks : []),
+      ...todayBlocks,
+      ...checkinBlocks,
       ...plannedPresence
-        .filter(
-          (item) => !office.hasState || (office.hasState && item.key !== today),
-        )
+        .filter((item) => item.key !== today)
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',
