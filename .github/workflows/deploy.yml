@@ -5,7 +5,7 @@ on:
 
 defaults:
   run:
-    working-directory: '/home/kontan/kontan/kontan-server/'
+    working-directory: 'kontan-server'
 
 jobs:
   build-and-install:
