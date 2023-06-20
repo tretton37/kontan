@@ -9,6 +9,7 @@ export class ScheduleService {
   constructor(private readonly officeService: OfficeService) {}
   @Cron('0 0 * * *')
   async handleCron() {
+    this.logger.debug('Scheduled task executed');
     await this.officeService.resetInbound();
     await this.officeService.incrementDays();
   }
