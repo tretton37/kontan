@@ -8,7 +8,7 @@ npm run build
 
 # Generate start scripts
 echo "export PATH="$(npm config get prefix)"/bin/node:$PATH" > startProd.sh
-{ echo "cd "$(pwd)""; echo "sudo killall node"; echo "npm run serve:prod"; } >> startProd.sh
+{ echo "cd "$(pwd)""; echo "npm run serve:prod"; } >> startProd.sh
 echo "sudo killall ngrok" > startProd.tunnel.sh
 echo "ngrok http --config=$HOME/.config/ngrok/ngrok.yml --subdomain=kontan localhost:3000 --log=stdout > /var/log/ngrok.prod.log" >> startProd.tunnel.sh
 

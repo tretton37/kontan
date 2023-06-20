@@ -5,16 +5,13 @@ on:
 
 defaults:
   run:
-    working-directory: '~/kontan/kontan-server/'
-
+    working-directory: '/home/kontan/kontan/kontan-server/'
 
 jobs:
   build-and-install:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-        with:
-          path: ~/kontan
       # Setup virtual env, install dependencies
       - name: Create new virtual env and activate it
         run: |
