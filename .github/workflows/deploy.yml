@@ -12,16 +12,16 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-      # Setup virtual env, install dependencies
-      - name: Create new virtual env and activate it
+      - name: Install dependencies, build and copy output dir
         run: |
           npm install
           npm run build
+          cp -r dist ~/kontan/kontan-server
 
       - name: Restart and run
         run: |
-          echo "export PATH="$(npm config get prefix)"/bin/node:$PATH" > startProd.sh
-          { echo "cd "$(pwd)""; echo "npm run serve:prod"; } >> startProd.sh
-          echo "sudo killall ngrok" > startProd.tunnel.sh
-          echo "ngrok http --config=$HOME/.config/ngrok/ngrok.yml --subdomain=kontan localhost:3000 --log=stdout > /var/log/ngrok.prod.log" >> startProd.tunnel.sh
+          echo "export PATH="$(npm config get prefix)"/bin/node:$PATH" > ~/kontan/kontan-server/startProd.sh
+          { echo "cd /home/kontan/kontan/kontan-server"; echo "npm run serve:prod"; } >> ~/kontan/kontan-server/startProd.sh
+          echo "sudo killall ngrok" > ~/kontan/kontan-server/startProd.tunnel.sh
+          echo "ngrok http --config=$HOME/.config/ngrok/ngrok.yml --subdomain=kontan localhost:3000 --log=stdout > /var/log/ngrok.prod.log" >> ~/kontan/kontan-server/startProd.tunnel.sh
           sudo supervisorctl restart kontan:*
