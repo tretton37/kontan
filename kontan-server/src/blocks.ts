@@ -22,6 +22,7 @@ export const ACTIONS = {
   DAY_CHECKBOX: 'day_button',
   REFRESH_BUTTON: 'refresh_button',
   OFFICE_SELECT: 'office_select',
+  CHECKIN_BUTTON: 'checkin_button',
 };
 
 export const BLOCK_IDS = {
@@ -192,11 +193,13 @@ const getUserStatus = (status: Status): string => {
 
 export const homeScreen = ({
   presentUsers,
+  checkedInUsers,
   plannedPresence,
   user,
   offices,
 }: {
   presentUsers: InboundDto[];
+  checkedInUsers: InboundDto[];
   plannedPresence: UpcomingPresenceDto[];
   user: User;
   offices: Office[];
@@ -219,9 +222,8 @@ export const homeScreen = ({
     (office) => office.value === user.office,
   );
 
-  const currentUser = plannedPresence.find(
-    (presence) =>
-      presence.users.some((usr) => usr.slackUserId === user.slackUserId)[0],
+  const currentUser = checkedInUsers.find(
+    (usr) => usr.slackUserId === user.slackUserId,
   );
 
   keys.forEach((key) => {
@@ -251,6 +253,24 @@ export const homeScreen = ({
     }
   });
 
+  const checkInBlock = [
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: currentUser?.status === 'INBOUND' ? 'Check-out' : 'Check-in',
+            emoji: true,
+          },
+          value: ACTIONS.CHECKIN_BUTTON,
+          action_id: ACTIONS.CHECKIN_BUTTON,
+        },
+      ],
+    },
+  ];
+
   const todayBlocks = [
     {
       type: 'header',
@@ -268,6 +288,15 @@ export const homeScreen = ({
         },
       };
     }),
+    ...checkedInUsers.map((user) => {
+      return {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${user.name} - ${getUserStatus(user.status)}`,
+        },
+      };
+    }),
     {
       type: 'actions',
       elements: [
@@ -276,27 +305,6 @@ export const homeScreen = ({
           text: {
             type: 'plain_text',
             text: 'Refresh',
-            emoji: true,
-          },
-          value: ACTIONS.REFRESH_BUTTON,
-          action_id: ACTIONS.REFRESH_BUTTON,
-        },
-      ],
-    },
-    {
-      type: 'divider',
-    },
-  ];
-
-  const checkinBlocks = [
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: {
-            type: 'plain_text',
-            text: currentUser.status === 'INBOUND' ? 'Check out' : 'Check in',
             emoji: true,
           },
           value: ACTIONS.REFRESH_BUTTON,
@@ -379,8 +387,8 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
+      ...(currentUser ? checkInBlock : []),
       ...todayBlocks,
-      ...checkinBlocks,
       ...plannedPresence
         .filter((item) => item.key !== today)
         .map(({ weekday, users }) => {
