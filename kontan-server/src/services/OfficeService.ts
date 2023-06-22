@@ -13,6 +13,9 @@ export interface InboundDto extends User {
 }
 
 type OfficePresence = { office: Record<User['tag'], { status: Status }> };
+type OfficeCheckIn = {
+  office: Record<User['slackUserId'], { status: Status }>;
+};
 
 export interface UpcomingPresenceDto {
   key: string;
@@ -119,6 +122,62 @@ export class OfficeService {
     return Object.values(userMap).sort((a, b) => (a.name > b.name ? 1 : -1));
   }
 
+  async whoHasCheckedIn(office: string): Promise<InboundDto[]> {
+    const ref = this.admin.db().collection('presence').doc(`checkIn_${office}`);
+    const snapshot = await ref.get();
+
+    const checkIn = snapshot.data() as OfficeCheckIn;
+    const officeCheckIn = Object.keys(checkIn.office);
+    const usersRef = this.admin.db().collection('users');
+    let virtuallyCheckedIn: User[] = [];
+
+    if (officeCheckIn?.length > 0) {
+      virtuallyCheckedIn =
+        (
+          await usersRef.get().then((users) => {
+            return users.docs.map((doc) => doc.data() as User);
+          })
+        )?.filter((user) => officeCheckIn.includes(user.slackUserId)) ?? [];
+    }
+    const weekdaySnap = await this.admin
+      .db()
+      .collection('presence')
+      .doc(`weekday_${office}`)
+      .get();
+    const userIds = (await weekdaySnap.data()?.[
+      weekdayKeyBuilder(Date.now())
+    ]) as User['slackUserId'][];
+    let plannedForToday: User[] = [];
+    if (userIds?.length > 0) {
+      const plannedForTodayRef = await usersRef
+        .where('slackUserId', 'in', userIds)
+        .get();
+
+      plannedForToday = plannedForTodayRef.docs.map(
+        (doc) => doc.data() as User,
+      );
+    }
+    const checkedInSet = new Set(
+      virtuallyCheckedIn.map((user) => user.slackUserId),
+    );
+
+    const userMap = [...virtuallyCheckedIn, ...plannedForToday].reduce<
+      Record<User['slackUserId'], InboundDto>
+    >((acc, user) => {
+      return {
+        ...acc,
+        [user.slackUserId]: {
+          ...user,
+          status: checkedInSet.has(user.slackUserId)
+            ? checkIn.office[user.slackUserId].status
+            : 'PLANNED',
+        },
+      };
+    }, {});
+
+    return Object.values(userMap).sort((a, b) => (a.name > b.name ? 1 : -1));
+  }
+
   async getPlannedPresence(office: string): Promise<UpcomingPresenceDto[]> {
     const snap = await this.admin
       .db()
@@ -201,6 +260,33 @@ export class OfficeService {
         office: {
           ...presence.office,
           [tag]: { status: 'OUTBOUND' },
+        },
+      });
+      return { status: 'OUTBOUND' };
+    }
+  }
+
+  async checkInUser(
+    userId: User['slackUserId'],
+    office: string,
+  ): Promise<{ status: Status }> {
+    const ref = this.admin.db().collection('presence').doc(`checkIn_${office}`);
+    const snapshot = await ref.get();
+    const checkIn = snapshot.data() as OfficeCheckIn;
+    if (
+      !Object.keys(checkIn.office).includes(userId) ||
+      (Object.keys(checkIn.office).includes(userId) &&
+        checkIn.office[userId].status === 'OUTBOUND')
+    ) {
+      await ref.set({
+        office: { ...checkIn.office, [userId]: { status: 'INBOUND' } },
+      });
+      return { status: 'INBOUND' };
+    } else {
+      await ref.set({
+        office: {
+          ...checkIn.office,
+          [userId]: { status: 'OUTBOUND' },
         },
       });
       return { status: 'OUTBOUND' };
