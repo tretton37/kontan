@@ -34,10 +34,14 @@ export class RFIDService {
   ) {}
 
   async CheckTag(tag: string): Promise<RFIDStatus> {
-    if (!(await this.userService.tagExists(tag))) {
+    const user = await this.userService.getUserByTag(tag);
+    if (!user) {
       return 'unknown';
     }
-    const { status } = await this.officeService.checkUser(tag, 'Helsingborg');
+    const { status } = await this.officeService.checkUser(
+      user.slackUserId,
+      'Helsingborg',
+    );
     return status.toLowerCase() as RFIDStatus;
   }
 

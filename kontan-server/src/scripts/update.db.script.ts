@@ -16,12 +16,12 @@ async function init() {
   });
 }
 
-async function addCheckIn() {
+async function addStateForLund() {
   await init();
-  const document = await db().collection('presence').doc('checkIn_Lund').get();
+  const document = await db().collection('presence').doc('state_Lund').get();
   if (!document || !document.exists) {
     await document.ref.set({ offices: {} });
   }
 }
 
-addCheckIn();
+addStateForLund();

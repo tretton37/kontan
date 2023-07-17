@@ -184,8 +184,6 @@ const getUserStatus = (status: Status): string => {
       return ':white_check_mark:';
     case 'OUTBOUND':
       return '_Checked out_ :house_with_garden:';
-    case 'PLANNED_NO_TAG':
-      return '_No tag_ :shrug:';
     default:
       return '_Not checked in yet_';
   }
@@ -193,13 +191,11 @@ const getUserStatus = (status: Status): string => {
 
 export const homeScreen = ({
   presentUsers,
-  checkedInUsers,
   plannedPresence,
   user,
   offices,
 }: {
   presentUsers: InboundDto[];
-  checkedInUsers: InboundDto[];
   plannedPresence: UpcomingPresenceDto[];
   user: User;
   offices: Office[];
@@ -222,7 +218,7 @@ export const homeScreen = ({
     (office) => office.value === user.office,
   );
 
-  const currentUser = checkedInUsers.find(
+  const currentUser = presentUsers.find(
     (usr) => usr.slackUserId === user.slackUserId,
   );
 
@@ -280,15 +276,6 @@ export const homeScreen = ({
       },
     },
     ...presentUsers.map((user) => {
-      return {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `${user.name} - ${getUserStatus(user.status)}`,
-        },
-      };
-    }),
-    ...checkedInUsers.map((user) => {
       return {
         type: 'section',
         text: {

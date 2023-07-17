@@ -12,8 +12,7 @@ export interface InboundDto extends User {
   status: Status;
 }
 
-type OfficePresence = { office: Record<User['tag'], { status: Status }> };
-type OfficeCheckIn = {
+type OfficePresence = {
   office: Record<User['slackUserId'], { status: Status }>;
 };
 
@@ -25,14 +24,9 @@ export interface UpcomingPresenceDto {
 
 export interface Office {
   id: string;
-  hasState?: boolean;
 }
 
 type Weekday = Record<string, User['slackUserId'][]>;
-
-const getPlannedStatus = (tag: string) => {
-  return tag === 'NO_TAG' ? 'PLANNED_NO_TAG' : 'PLANNED';
-};
 
 @Injectable()
 export class OfficeService {
@@ -56,13 +50,11 @@ export class OfficeService {
   async resetInbound(): Promise<void> {
     const offices = await this.getOffices();
     offices.forEach(async (office) => {
-      if (office.hasState) {
-        const ref = this.admin
-          .db()
-          .collection('presence')
-          .doc(`state_${office.id}`);
-        await ref.set({ office: {} });
-      }
+      const ref = this.admin
+        .db()
+        .collection('presence')
+        .doc(`state_${office.id}`);
+      await ref.set({ office: {} });
     });
   }
 
@@ -73,15 +65,15 @@ export class OfficeService {
     const presence = snapshot.data() as OfficePresence;
     const officePresence = Object.keys(presence.office);
     const usersRef = this.admin.db().collection('users');
-    let physicallyCheckedIn: User[] = [];
+    let checkedIn: User[] = [];
 
     if (officePresence?.length > 0) {
-      physicallyCheckedIn =
+      checkedIn =
         (
           await usersRef.get().then((users) => {
             return users.docs.map((doc) => doc.data() as User);
           })
-        )?.filter((user) => officePresence.includes(user.tag)) ?? [];
+        )?.filter((user) => officePresence.includes(user.slackUserId)) ?? [];
     }
     const weekdaySnap = await this.admin
       .db()
@@ -101,11 +93,9 @@ export class OfficeService {
         (doc) => doc.data() as User,
       );
     }
-    const checkedInSet = new Set(
-      physicallyCheckedIn.map((user) => user.slackUserId),
-    );
+    const checkedInSet = new Set(checkedIn.map((user) => user.slackUserId));
 
-    const userMap = [...physicallyCheckedIn, ...plannedForToday].reduce<
+    const userMap = [...checkedIn, ...plannedForToday].reduce<
       Record<User['slackUserId'], InboundDto>
     >((acc, user) => {
       return {
@@ -113,63 +103,7 @@ export class OfficeService {
         [user.slackUserId]: {
           ...user,
           status: checkedInSet.has(user.slackUserId)
-            ? presence.office[user.tag].status
-            : getPlannedStatus(user.tag),
-        },
-      };
-    }, {});
-
-    return Object.values(userMap).sort((a, b) => (a.name > b.name ? 1 : -1));
-  }
-
-  async whoHasCheckedIn(office: string): Promise<InboundDto[]> {
-    const ref = this.admin.db().collection('presence').doc(`checkIn_${office}`);
-    const snapshot = await ref.get();
-
-    const checkIn = snapshot.data() as OfficeCheckIn;
-    const officeCheckIn = Object.keys(checkIn.office);
-    const usersRef = this.admin.db().collection('users');
-    let virtuallyCheckedIn: User[] = [];
-
-    if (officeCheckIn?.length > 0) {
-      virtuallyCheckedIn =
-        (
-          await usersRef.get().then((users) => {
-            return users.docs.map((doc) => doc.data() as User);
-          })
-        )?.filter((user) => officeCheckIn.includes(user.slackUserId)) ?? [];
-    }
-    const weekdaySnap = await this.admin
-      .db()
-      .collection('presence')
-      .doc(`weekday_${office}`)
-      .get();
-    const userIds = (await weekdaySnap.data()?.[
-      weekdayKeyBuilder(Date.now())
-    ]) as User['slackUserId'][];
-    let plannedForToday: User[] = [];
-    if (userIds?.length > 0) {
-      const plannedForTodayRef = await usersRef
-        .where('slackUserId', 'in', userIds)
-        .get();
-
-      plannedForToday = plannedForTodayRef.docs.map(
-        (doc) => doc.data() as User,
-      );
-    }
-    const checkedInSet = new Set(
-      virtuallyCheckedIn.map((user) => user.slackUserId),
-    );
-
-    const userMap = [...virtuallyCheckedIn, ...plannedForToday].reduce<
-      Record<User['slackUserId'], InboundDto>
-    >((acc, user) => {
-      return {
-        ...acc,
-        [user.slackUserId]: {
-          ...user,
-          status: checkedInSet.has(user.slackUserId)
-            ? checkIn.office[user.slackUserId].status
+            ? presence.office[user.slackUserId].status
             : 'PLANNED',
         },
       };
@@ -240,52 +174,25 @@ export class OfficeService {
   }
 
   async checkUser(
-    tag: User['tag'],
+    userId: User['slackUserId'],
     office: string,
   ): Promise<{ status: Status }> {
     const ref = this.admin.db().collection('presence').doc(`state_${office}`);
     const snapshot = await ref.get();
     const presence = snapshot.data() as OfficePresence;
     if (
-      !Object.keys(presence.office).includes(tag) ||
-      (Object.keys(presence.office).includes(tag) &&
-        presence.office[tag].status === 'OUTBOUND')
+      !Object.keys(presence.office).includes(userId) ||
+      (Object.keys(presence.office).includes(userId) &&
+        presence.office[userId].status === 'OUTBOUND')
     ) {
       await ref.set({
-        office: { ...presence.office, [tag]: { status: 'INBOUND' } },
+        office: { ...presence.office, [userId]: { status: 'INBOUND' } },
       });
       return { status: 'INBOUND' };
     } else {
       await ref.set({
         office: {
           ...presence.office,
-          [tag]: { status: 'OUTBOUND' },
-        },
-      });
-      return { status: 'OUTBOUND' };
-    }
-  }
-
-  async checkInUser(
-    userId: User['slackUserId'],
-    office: string,
-  ): Promise<{ status: Status }> {
-    const ref = this.admin.db().collection('presence').doc(`checkIn_${office}`);
-    const snapshot = await ref.get();
-    const checkIn = snapshot.data() as OfficeCheckIn;
-    if (
-      !Object.keys(checkIn.office).includes(userId) ||
-      (Object.keys(checkIn.office).includes(userId) &&
-        checkIn.office[userId].status === 'OUTBOUND')
-    ) {
-      await ref.set({
-        office: { ...checkIn.office, [userId]: { status: 'INBOUND' } },
-      });
-      return { status: 'INBOUND' };
-    } else {
-      await ref.set({
-        office: {
-          ...checkIn.office,
           [userId]: { status: 'OUTBOUND' },
         },
       });

@@ -78,7 +78,7 @@ export class SlackService {
       }
       if (value === ACTIONS.CHECKIN_BUTTON) {
         const user = await this.userService.getUser(payload.user.id);
-        await this.officeService.checkInUser(payload.user.id, user.office);
+        await this.officeService.checkUser(payload.user.id, user.office);
         await this.showHomeScreen(payload.user.id);
       }
       if (value === ACTIONS.REFRESH_BUTTON) {
@@ -130,11 +130,8 @@ export class SlackService {
       user.office = offices[0].id;
     }
 
-    const office = offices.find((office) => office.id === user.office);
-
-    const [presentUsers, checkedInUsers, plannedPresence] = await Promise.all([
-      office.hasState ? this.officeService.whoIsInbound(user.office) : [],
-      !office.hasState ? this.officeService.whoHasCheckedIn(user.office) : [],
+    const [presentUsers, plannedPresence] = await Promise.all([
+      this.officeService.whoIsInbound(user.office),
       this.officeService.getPlannedPresence(user.office),
     ]);
 
@@ -142,7 +139,6 @@ export class SlackService {
       user_id: userId,
       view: homeScreen({
         presentUsers,
-        checkedInUsers,
         plannedPresence,
         user,
         offices,
