@@ -22,6 +22,7 @@ export const ACTIONS = {
   DAY_CHECKBOX: 'day_button',
   REFRESH_BUTTON: 'refresh_button',
   OFFICE_SELECT: 'office_select',
+  CHECKIN_BUTTON: 'checkin_button',
 };
 
 export const BLOCK_IDS = {
@@ -183,8 +184,6 @@ const getUserStatus = (status: Status): string => {
       return ':white_check_mark:';
     case 'OUTBOUND':
       return '_Checked out_ :house_with_garden:';
-    case 'PLANNED_NO_TAG':
-      return '_No tag_ :shrug:';
     default:
       return '_Not checked in yet_';
   }
@@ -215,9 +214,12 @@ export const homeScreen = ({
     } as PlainTextOption;
   });
 
-  const office = offices.find((office) => office.id === user.office);
   const initialOfficeOption = officeNames.find(
     (office) => office.value === user.office,
+  );
+
+  const currentUser = presentUsers.find(
+    (usr) => usr.slackUserId === user.slackUserId,
   );
 
   keys.forEach((key) => {
@@ -246,6 +248,24 @@ export const homeScreen = ({
       initialOptions.push(inputOption);
     }
   });
+
+  const checkInBlock = [
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: currentUser?.status === 'INBOUND' ? 'Check-out' : 'Check-in',
+            emoji: true,
+          },
+          value: ACTIONS.CHECKIN_BUTTON,
+          action_id: ACTIONS.CHECKIN_BUTTON,
+        },
+      ],
+    },
+  ];
 
   const todayBlocks = [
     {
@@ -354,11 +374,10 @@ export const homeScreen = ({
       {
         type: 'divider',
       },
-      ...(office.hasState ? todayBlocks : []),
+      ...(currentUser ? checkInBlock : []),
+      ...todayBlocks,
       ...plannedPresence
-        .filter(
-          (item) => !office.hasState || (office.hasState && item.key !== today),
-        )
+        .filter((item) => item.key !== today)
         .map(({ weekday, users }) => {
           const noOne = {
             type: 'section',

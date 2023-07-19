@@ -76,6 +76,11 @@ export class SlackService {
           trigger_id: payload.trigger_id,
         });
       }
+      if (value === ACTIONS.CHECKIN_BUTTON) {
+        const user = await this.userService.getUser(payload.user.id);
+        await this.officeService.checkUser(payload.user.id, user.office);
+        await this.showHomeScreen(payload.user.id);
+      }
       if (value === ACTIONS.REFRESH_BUTTON) {
         await this.showHomeScreen(payload.user.id);
       }
@@ -104,7 +109,7 @@ export class SlackService {
       const tag =
         payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
           BLOCK_IDS.NFC_SERIAL + '-action'
-        ]?.value ?? 'NO_TAG';
+        ]?.value.toLowerCase() ?? 'NO_TAG';
       const { id, username, name } = payload.user;
       await this.userService.createUser({
         slackUserId: id,
@@ -125,16 +130,19 @@ export class SlackService {
       user.office = offices[0].id;
     }
 
-    const office = offices.find((office) => office.id === user.office);
-
     const [presentUsers, plannedPresence] = await Promise.all([
-      office.hasState ? this.officeService.whoIsInbound(user.office) : [],
+      this.officeService.whoIsInbound(user.office),
       this.officeService.getPlannedPresence(user.office),
     ]);
 
     await this.web.views.publish({
       user_id: userId,
-      view: homeScreen({ presentUsers, plannedPresence, user, offices }),
+      view: homeScreen({
+        presentUsers,
+        plannedPresence,
+        user,
+        offices,
+      }),
     });
   }
 
