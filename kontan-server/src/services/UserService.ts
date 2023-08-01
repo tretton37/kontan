@@ -63,7 +63,10 @@ export class UserService {
     return undefined;
   }
 
-  async updateUser(slackUserId: string, { tag, office, compactMode }: User) {
+  async updateUser(
+    slackUserId: string,
+    { tag, office, compactMode = false }: User,
+  ) {
     const ref = this.admin.db().collection('users').doc(slackUserId);
     await ref.update({
       office,
