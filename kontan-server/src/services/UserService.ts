@@ -8,6 +8,7 @@ export interface User {
   username: string;
   slackUserId: string;
   office: string;
+  compactMode: boolean;
 }
 @Injectable()
 export class UserService {
@@ -15,7 +16,7 @@ export class UserService {
     private readonly admin: Admin,
     private readonly web: SlackClient,
   ) {}
-  async createUser({ tag, slackUserId, office }: User) {
+  async createUser({ tag, slackUserId, office, compactMode }: User) {
     if (await this.userExists(slackUserId)) {
       return;
     }
@@ -27,6 +28,7 @@ export class UserService {
       tag,
       slackUserId,
       office,
+      compactMode,
     });
   }
 
@@ -61,10 +63,12 @@ export class UserService {
     return undefined;
   }
 
-  async updateUser(slackUserId: string, office: string) {
+  async updateUser(slackUserId: string, { tag, office, compactMode }: User) {
     const ref = this.admin.db().collection('users').doc(slackUserId);
     await ref.update({
       office,
+      tag,
+      compactMode,
     });
   }
 }

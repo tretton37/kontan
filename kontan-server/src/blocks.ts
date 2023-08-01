@@ -17,17 +17,24 @@ import { User } from './services/UserService';
 
 export const ACTIONS = {
   REGISTER_BUTTON: 'register_button',
-  // When a user clicks Submit in the register modal
+  // When a user clicks Submit in a modal
   SUBMIT: 'view_submission',
   DAY_CHECKBOX: 'day_button',
   REFRESH_BUTTON: 'refresh_button',
   OFFICE_SELECT: 'office_select',
   CHECKIN_BUTTON: 'checkin_button',
+  SETTINGS_BUTTON: 'settings_button',
 };
 
 export const BLOCK_IDS = {
   NFC_SERIAL: 'nfc_serial',
   HOME_OFFICE: 'home_office',
+  COMPACT_MODE: 'compact_mode',
+};
+
+export const MODALS = {
+  REGISTER: 'register',
+  SETTINGS: 'settings',
 };
 
 export const newUserBlock: View = {
@@ -81,6 +88,7 @@ export const registerModal = (offices: Office[]): ModalView => {
 
   return {
     type: 'modal',
+    callback_id: MODALS.REGISTER,
     title: {
       type: 'plain_text',
       text: 'Register to Kontan',
@@ -171,6 +179,78 @@ export const registerModal = (offices: Office[]): ModalView => {
           type: 'plain_text',
           text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
           emoji: true,
+        },
+        optional: true,
+      },
+    ],
+  };
+};
+
+export const settingsModal = (user: User): ModalView => {
+  return {
+    type: 'modal',
+    callback_id: MODALS.SETTINGS,
+    title: {
+      type: 'plain_text',
+      text: 'Settings',
+      emoji: true,
+    },
+    submit: {
+      type: 'plain_text',
+      text: 'Update',
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Cancel',
+      emoji: true,
+    },
+    blocks: [
+      {
+        type: 'input',
+        element: {
+          type: 'plain_text_input',
+          action_id: BLOCK_IDS.NFC_SERIAL + '-action',
+          initial_value: user.tag,
+        },
+        block_id: BLOCK_IDS.NFC_SERIAL,
+        label: {
+          type: 'plain_text',
+          text: 'NFC Tag serial, e.g. t5:s0:1b:2f',
+          emoji: true,
+        },
+        optional: true,
+      },
+      {
+        type: 'input',
+        element: {
+          type: 'checkboxes',
+          action_id: BLOCK_IDS.COMPACT_MODE + '-action',
+          options: [
+            {
+              text: {
+                type: 'plain_text',
+                text: 'Compact',
+              },
+              value: 'true',
+            },
+          ],
+          ...(user.compactMode && {
+            initial_options: [
+              {
+                text: {
+                  type: 'plain_text',
+                  text: 'Compact',
+                },
+                value: 'true',
+              },
+            ],
+          }),
+        },
+        block_id: BLOCK_IDS.COMPACT_MODE,
+        label: {
+          type: 'plain_text',
+          text: 'Layout',
         },
         optional: true,
       },
@@ -275,15 +355,33 @@ export const homeScreen = ({
         text: ':office: Today',
       },
     },
-    ...presentUsers.map((user) => {
-      return {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `${user.name} - ${getUserStatus(user.status)}`,
-        },
-      };
-    }),
+    ...(user.compactMode
+      ? [
+          ...(presentUsers.length > 0
+            ? [
+                {
+                  type: 'section',
+                  text: {
+                    type: 'mrkdwn',
+                    text: presentUsers
+                      .map(
+                        (usr) => `${usr.name} - ${getUserStatus(usr.status)}`,
+                      )
+                      .join(', '),
+                  },
+                },
+              ]
+            : []),
+        ]
+      : presentUsers.map((usr) => {
+          return {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `${usr.name} - ${getUserStatus(usr.status)}`,
+            },
+          };
+        })),
     {
       type: 'actions',
       elements: [
@@ -320,6 +418,21 @@ export const homeScreen = ({
           type: 'mrkdwn',
           text: 'This is your space to manage and see office presence, to make it easier for you to plan your work week!',
         },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: ':gear: Settings',
+              emoji: true,
+            },
+            value: ACTIONS.SETTINGS_BUTTON,
+            action_id: ACTIONS.SETTINGS_BUTTON,
+          },
+        ],
       },
       {
         type: 'divider',
@@ -394,15 +507,31 @@ export const homeScreen = ({
                 text: weekday,
               },
             },
-            ...users.map((user) => {
-              return {
-                type: 'section',
-                text: {
-                  type: 'mrkdwn',
-                  text: `_${user.name}_`,
-                },
-              };
-            }),
+            ...(user.compactMode
+              ? [
+                  ...(users.length > 0
+                    ? [
+                        {
+                          type: 'section',
+                          text: {
+                            type: 'mrkdwn',
+                            text: users
+                              .map((usr) => `_${usr.name}_`)
+                              .join(', '),
+                          },
+                        },
+                      ]
+                    : []),
+                ]
+              : users.map((usr) => {
+                  return {
+                    type: 'section',
+                    text: {
+                      type: 'mrkdwn',
+                      text: `_${usr.name}_`,
+                    },
+                  };
+                })),
             ...(users.length === 0 ? [noOne] : []),
             {
               type: 'divider',
@@ -410,6 +539,17 @@ export const homeScreen = ({
           ];
         })
         .flat(),
+      ...(plannedPresence.length === 0
+        ? [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '_No planned presence_',
+              },
+            },
+          ]
+        : []),
     ],
   };
 };

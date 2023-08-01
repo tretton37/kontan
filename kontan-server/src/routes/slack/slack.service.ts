@@ -7,9 +7,11 @@ import { SlackEvent } from '../../types';
 import {
   ACTIONS,
   BLOCK_IDS,
+  MODALS,
   homeScreen,
   newUserBlock,
   registerModal,
+  settingsModal,
 } from '../../blocks';
 import * as crypto from 'crypto';
 
@@ -76,6 +78,17 @@ export class SlackService {
           trigger_id: payload.trigger_id,
         });
       }
+      if (value === ACTIONS.SETTINGS_BUTTON) {
+        const user = await this.userService.getUser(payload.user.id);
+        if (user.tag === 'NO_TAG') {
+          user.tag = '';
+        }
+        await this.web.views.open({
+          user_id: payload.user.id,
+          view: settingsModal(user),
+          trigger_id: payload.trigger_id,
+        });
+      }
       if (value === ACTIONS.CHECKIN_BUTTON) {
         const user = await this.userService.getUser(payload.user.id);
         await this.officeService.checkUser(payload.user.id, user.office);
@@ -93,33 +106,52 @@ export class SlackService {
         await this.showHomeScreen(payload.user.id);
       }
       if (action_id === ACTIONS.OFFICE_SELECT) {
-        await this.userService.updateUser(
-          payload.user.id,
-          selected_option.value,
-        );
+        const user = await this.userService.getUser(payload.user.id);
+        user.office = selected_option.value;
+        await this.userService.updateUser(payload.user.id, user);
         await this.showHomeScreen(payload.user.id);
       }
     }
 
     if (payload.type === ACTIONS.SUBMIT) {
-      const homeOffice =
-        payload.view.state.values[BLOCK_IDS.HOME_OFFICE][
-          BLOCK_IDS.HOME_OFFICE + '-action'
-        ].selected_option.value;
-      const tag =
-        payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
-          BLOCK_IDS.NFC_SERIAL + '-action'
-        ]?.value.toLowerCase() ?? 'NO_TAG';
-      const { id, username, name } = payload.user;
-      await this.userService.createUser({
-        slackUserId: id,
-        tag,
-        username,
-        name,
-        office: homeOffice,
-      });
-      await this.showHomeScreen(id);
-      return;
+      if (payload.view.callback_id === MODALS.REGISTER) {
+        const homeOffice =
+          payload.view.state.values[BLOCK_IDS.HOME_OFFICE][
+            BLOCK_IDS.HOME_OFFICE + '-action'
+          ].selected_option.value;
+        const tag =
+          payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
+            BLOCK_IDS.NFC_SERIAL + '-action'
+          ].value?.toLowerCase() ?? 'NO_TAG';
+        const { id, username, name } = payload.user;
+        await this.userService.createUser({
+          slackUserId: id,
+          tag,
+          username,
+          name,
+          office: homeOffice,
+          compactMode: false,
+        });
+        await this.showHomeScreen(id);
+        return;
+      }
+      if (payload.view.callback_id === MODALS.SETTINGS) {
+        const tag =
+          payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
+            BLOCK_IDS.NFC_SERIAL + '-action'
+          ].value?.toLowerCase() ?? 'NO_TAG';
+        const compactMode =
+          payload.view.state.values[BLOCK_IDS.COMPACT_MODE][
+            BLOCK_IDS.COMPACT_MODE + '-action'
+          ].selected_options[0]?.value ?? 'false';
+        const id = payload.user.id;
+        const user = await this.userService.getUser(id);
+        user.tag = tag;
+        user.compactMode = JSON.parse(compactMode);
+        await this.userService.updateUser(id, user);
+        await this.showHomeScreen(id);
+        return;
+      }
     }
   }
 
