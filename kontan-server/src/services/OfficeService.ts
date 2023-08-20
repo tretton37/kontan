@@ -32,13 +32,24 @@ type Weekday = Record<string, User['slackUserId'][]>;
 export class OfficeService {
   constructor(private readonly admin: Admin) {}
   async incrementDays(): Promise<void> {
+    const statuses = await this.admin
+      .db()
+      .collection('statuses')
+      .get()
+      .then((coll) => coll.docs.map((d) => d.data()));
+    const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
+    const statusesToDelete = statuses.filter((s) => s.key === yesterday);
+    statusesToDelete.forEach((s) => {
+      this.admin.db().collection('statuses').doc(s.id).delete();
+    });
+
     const offices = await this.getOffices();
     offices.forEach(async (office) => {
       const ref = this.admin
         .db()
         .collection('presence')
         .doc(`weekday_${office.id}`);
-      const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
+
       const dayKeys = getUpcomingWeekdayKeys(false);
       const data = (await ref.get()).data() as Weekday;
       delete data?.[yesterday];
@@ -167,6 +178,7 @@ export class OfficeService {
         data[key] = [...new Set([...data[key], user.slackUserId])];
       } else {
         data[key] = data[key]?.filter((id) => id !== user.slackUserId) ?? [];
+        this.removeStatusMessage(user, key);
       }
     });
 
@@ -209,4 +221,50 @@ export class OfficeService {
 
     return offices;
   }
+
+  async getStatusMessagesForOffice(office: string): Promise<StatusMessage[]> {
+    const snapshot = await this.admin
+      .db()
+      .collection('statuses')
+      .where('office', '==', office)
+      .get();
+
+    const statuses = new Array<StatusMessage>();
+    snapshot.forEach((s) => {
+      statuses.push(s.data() as StatusMessage);
+    });
+
+    return statuses;
+  }
+
+  async setStatusMessage(
+    user: User,
+    dayKey: string,
+    statusMessage: string,
+  ): Promise<void> {
+    const ref = this.admin.db().collection('statuses');
+    await ref.doc(`${user.slackUserId}_${user.office}_${dayKey}`).set({
+      slackUserId: user.slackUserId,
+      dayKey: dayKey,
+      text: statusMessage,
+      id: `${user.slackUserId}_${user.office}_${dayKey}`,
+      office: user.office,
+    });
+  }
+
+  async removeStatusMessage(user: User, dayKey: string) {
+    await this.admin
+      .db()
+      .collection('statuses')
+      .doc(`${user.slackUserId}_${user.office}_${dayKey}`)
+      .delete();
+  }
+}
+
+export interface StatusMessage {
+  slackUserId: User['slackUserId'];
+  text: string;
+  dayKey: string;
+  id: string;
+  office: string;
 }
