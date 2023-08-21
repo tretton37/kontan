@@ -411,9 +411,9 @@ export const homeScreen = ({
       case 'INBOUND':
         return ':white_check_mark:' + getStatusMessage(userId, weekday);
       case 'OUTBOUND':
-        return '_Checked out_ :house_with_garden:';
+        return 'Checked out :house_with_garden:';
       default:
-        return '_Not checked in yet_' + getStatusMessage(userId, weekday);
+        return 'Not checked in yet' + getStatusMessage(userId, weekday);
     }
   };
 
