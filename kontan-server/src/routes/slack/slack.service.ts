@@ -12,6 +12,7 @@ import {
   newUserBlock,
   registerModal,
   settingsModal,
+  statusMessageModal,
 } from '../../blocks';
 import * as crypto from 'crypto';
 
@@ -89,6 +90,24 @@ export class SlackService {
           trigger_id: payload.trigger_id,
         });
       }
+      if (value === ACTIONS.STATUS_MESSAGE_BUTTON) {
+        const user = await this.userService.getUser(payload.user.id);
+        if (user.tag === 'NO_TAG') {
+          user.tag = '';
+        }
+        const plannedPresence = await this.officeService.getPlannedPresence(
+          user.office,
+        );
+        const filtered = plannedPresence.filter((p) =>
+          p.users.some((u) => u.slackUserId === user.slackUserId),
+        );
+
+        await this.web.views.open({
+          user_id: payload.user.id,
+          view: statusMessageModal(user.slackUserId, filtered),
+          trigger_id: payload.trigger_id,
+        });
+      }
       if (value === ACTIONS.CHECKIN_BUTTON) {
         const user = await this.userService.getUser(payload.user.id);
         await this.officeService.checkUser(payload.user.id, user.office);
@@ -135,6 +154,26 @@ export class SlackService {
         await this.showHomeScreen(id);
         return;
       }
+      if (payload.view.callback_id === MODALS.STATUS_MESSAGE) {
+        const user = await this.userService.getUser(payload.user.id);
+        const dayKey =
+          payload.view.state.values[BLOCK_IDS.STATUS_MESSAGE_DAY][
+            BLOCK_IDS.STATUS_MESSAGE_DAY + '-action'
+          ].selected_option.value;
+
+        const statusMessage =
+          payload.view.state.values[BLOCK_IDS.STATUS_MESSAGE_MESSAGE][
+            BLOCK_IDS.STATUS_MESSAGE_MESSAGE + '-action'
+          ].value;
+        if (dayKey && statusMessage) {
+          await this.officeService.setStatusMessage(
+            user,
+            dayKey,
+            statusMessage,
+          );
+        }
+        await this.showHomeScreen(user.slackUserId);
+      }
       if (payload.view.callback_id === MODALS.SETTINGS) {
         const tag =
           payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
@@ -158,6 +197,9 @@ export class SlackService {
   async showHomeScreen(userId: string) {
     const user = await this.userService.getUser(userId);
     const offices = await this.officeService.getOffices();
+    const statusMessages = await this.officeService.getStatusMessagesForOffice(
+      user.office,
+    );
     if (!user.office) {
       user.office = offices[0].id;
     }
@@ -174,6 +216,7 @@ export class SlackService {
         plannedPresence,
         user,
         offices,
+        statusMessages,
       }),
     });
   }
