@@ -222,6 +222,18 @@ export class OfficeService {
     return offices;
   }
 
+  async userHasStatusMessageForDay(
+    userId: string,
+    dayKey: string,
+    office: string,
+  ) {
+    const messages = await this.getStatusMessagesForOffice(office);
+
+    return messages.some(
+      (m) => m.dayKey === dayKey && userId === m.slackUserId,
+    );
+  }
+
   async getStatusMessagesForOffice(office: string): Promise<StatusMessage[]> {
     const snapshot = await this.admin
       .db()

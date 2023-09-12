@@ -67,3 +67,5 @@ node_modules/
 
 # arduino config
 config.h
+
+./.idea/**

@@ -9,6 +9,7 @@ export interface User {
   slackUserId: string;
   office: string;
   compactMode: boolean;
+  blockStatusMessagePrompt: boolean;
 }
 @Injectable()
 export class UserService {
@@ -65,13 +66,19 @@ export class UserService {
 
   async updateUser(
     slackUserId: string,
-    { tag, office, compactMode = false }: User,
+    {
+      tag,
+      office,
+      compactMode = false,
+      blockStatusMessagePrompt = false,
+    }: User,
   ) {
     const ref = this.admin.db().collection('users').doc(slackUserId);
     await ref.update({
       office,
       tag,
       compactMode,
+      blockStatusMessagePrompt,
     });
   }
 }
