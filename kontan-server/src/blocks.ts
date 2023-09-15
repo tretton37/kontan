@@ -28,6 +28,9 @@ export const ACTIONS = {
   STATUS_MESSAGE_BUTTON: 'status_message_button',
   STATUS_MESSAGE_DAY: 'status_message_day',
   STATUS_MESSAGE_MESSAGE: 'status_message_message',
+  STATUS_MESSAGE_TODAY: 'status_message_today',
+  STATUS_MESSAGE_TODAY_MESSAGE: 'status_message_today_message',
+  MISC: 'misc',
 };
 
 export const BLOCK_IDS = {
@@ -36,12 +39,26 @@ export const BLOCK_IDS = {
   COMPACT_MODE: 'compact_mode',
   STATUS_MESSAGE_DAY: 'status_message_day',
   STATUS_MESSAGE_MESSAGE: 'status_message_message',
+  STATUS_MESSAGE_TODAY: 'status_message_today',
+  STATUS_MESSAGE_TODAY_MESSAGE: 'status_message_today_message',
+  MISC: 'misc',
 };
 
 export const MODALS = {
   REGISTER: 'register',
   SETTINGS: 'settings',
   STATUS_MESSAGE: 'status_message',
+  STATUS_MESSAGE_TODAY: 'status_message_today',
+};
+
+export const MISC_OPTIONS_VALUES = {
+  block_status_message_prompt: 'block_status_message_prompt',
+  compact: 'compact',
+};
+
+export const MISC_OPTIONS_TO_KEYS = {
+  block_status_message_prompt: 'blockStatusMessagePrompt',
+  compact: 'compactMode',
 };
 
 export const newUserBlock: View = {
@@ -296,7 +313,92 @@ export const statusMessageModal = (
   };
 };
 
+export const statusMessageTodayModal = (): ModalView => {
+  return {
+    type: 'modal',
+    notify_on_close: true,
+    callback_id: MODALS.STATUS_MESSAGE_TODAY,
+    title: {
+      type: 'plain_text',
+      text: 'Add a status message?',
+      emoji: true,
+    },
+    submit: {
+      type: 'plain_text',
+      text: 'Add',
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: "Nope I'm good",
+      emoji: true,
+    },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: 'Would you like to add a status message for today? Maybe you want a lunch buddy or someone to grab a fika with. You can also add one later.',
+          emoji: true,
+        },
+      },
+      {
+        type: 'divider',
+      },
+      {
+        type: 'input',
+        element: {
+          type: 'plain_text_input',
+          action_id: BLOCK_IDS.STATUS_MESSAGE_TODAY_MESSAGE + '-action',
+        },
+        block_id: BLOCK_IDS.STATUS_MESSAGE_TODAY_MESSAGE,
+        label: {
+          type: 'plain_text',
+          text: 'Your custom status for the day, emojis are supported',
+          emoji: true,
+        },
+      } as Block,
+      {
+        type: 'divider',
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'plain_text',
+          text: ':pro-tip: If you find this annoying you can turn it off in settings.',
+          emoji: true,
+        },
+      } as Block,
+    ],
+  };
+};
+
 export const settingsModal = (user: User): ModalView => {
+  const getInitialOptions = () => {
+    const options = [];
+
+    if (user.compactMode) {
+      options.push({
+        text: {
+          type: 'plain_text',
+          text: 'Compact layout',
+        },
+        value: MISC_OPTIONS_VALUES.compact,
+      });
+    }
+
+    if (user.blockStatusMessagePrompt) {
+      options.push({
+        text: {
+          type: 'plain_text',
+          text: 'Block status message prompt on check-in',
+        },
+        value: MISC_OPTIONS_VALUES.block_status_message_prompt,
+      });
+    }
+
+    return !!options.length ? { initial_options: options } : {};
+  };
   return {
     type: 'modal',
     callback_id: MODALS.SETTINGS,
@@ -333,34 +435,31 @@ export const settingsModal = (user: User): ModalView => {
       },
       {
         type: 'input',
-        block_id: BLOCK_IDS.COMPACT_MODE,
+        block_id: BLOCK_IDS.MISC,
         label: {
           type: 'plain_text',
-          text: 'Layout',
+          text: 'Misc',
         },
         element: {
           type: 'checkboxes',
-          action_id: BLOCK_IDS.COMPACT_MODE + '-action',
+          action_id: BLOCK_IDS.MISC + '-action',
           options: [
             {
               text: {
                 type: 'plain_text',
-                text: 'Compact',
+                text: 'Compact layout',
               },
-              value: 'true',
+              value: MISC_OPTIONS_VALUES.compact,
+            },
+            {
+              text: {
+                type: 'plain_text',
+                text: 'Block status message prompt on check-in',
+              },
+              value: MISC_OPTIONS_VALUES.block_status_message_prompt,
             },
           ],
-          ...(user.compactMode && {
-            initial_options: [
-              {
-                text: {
-                  type: 'plain_text',
-                  text: 'Compact',
-                },
-                value: 'true',
-              },
-            ],
-          }),
+          ...getInitialOptions(),
         },
         optional: true,
       },

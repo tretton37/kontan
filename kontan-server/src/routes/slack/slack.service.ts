@@ -13,8 +13,12 @@ import {
   registerModal,
   settingsModal,
   statusMessageModal,
+  statusMessageTodayModal,
+  MISC_OPTIONS_VALUES,
+  MISC_OPTIONS_TO_KEYS,
 } from '../../blocks';
 import * as crypto from 'crypto';
+import { weekdayKeyBuilder } from '../../utils';
 
 export interface Action {
   action_id: string;
@@ -110,8 +114,18 @@ export class SlackService {
       }
       if (value === ACTIONS.CHECKIN_BUTTON) {
         const user = await this.userService.getUser(payload.user.id);
-        await this.officeService.checkUser(payload.user.id, user.office);
-        await this.showHomeScreen(payload.user.id);
+        const res = await this.officeService.checkUser(
+          payload.user.id,
+          user.office,
+        );
+        if (res.status === 'INBOUND' && !user.blockStatusMessagePrompt) {
+          await this.showAddTodayStatusModal(
+            payload.user.id,
+            payload.trigger_id,
+          );
+        } else {
+          await this.showHomeScreen(payload.user.id);
+        }
       }
       if (value === ACTIONS.REFRESH_BUTTON) {
         await this.showHomeScreen(payload.user.id);
@@ -132,6 +146,16 @@ export class SlackService {
       }
     }
 
+    // Refresh home screen if user dismissed adding a status for today
+    if (
+      payload.type === 'view_closed' &&
+      payload.view.callback_id === MODALS.STATUS_MESSAGE_TODAY
+    ) {
+      console.log(payload);
+      await this.showHomeScreen(payload.user.id);
+      return;
+    }
+
     if (payload.type === ACTIONS.SUBMIT) {
       if (payload.view.callback_id === MODALS.REGISTER) {
         const homeOffice =
@@ -150,6 +174,7 @@ export class SlackService {
           name,
           office: homeOffice,
           compactMode: false,
+          blockStatusMessagePrompt: false,
         });
         await this.showHomeScreen(id);
         return;
@@ -174,23 +199,70 @@ export class SlackService {
         }
         await this.showHomeScreen(user.slackUserId);
       }
+      if (payload.view.callback_id === MODALS.STATUS_MESSAGE_TODAY) {
+        const user = await this.userService.getUser(payload.user.id);
+        const statusMessage =
+          payload.view.state.values[BLOCK_IDS.STATUS_MESSAGE_TODAY_MESSAGE][
+            BLOCK_IDS.STATUS_MESSAGE_TODAY_MESSAGE + '-action'
+          ].value;
+
+        if (statusMessage) {
+          await this.officeService.setStatusMessage(
+            user,
+            weekdayKeyBuilder(Date.now()),
+            statusMessage,
+          );
+        }
+        await this.showHomeScreen(user.slackUserId);
+      }
       if (payload.view.callback_id === MODALS.SETTINGS) {
         const tag =
           payload.view.state.values[BLOCK_IDS.NFC_SERIAL][
             BLOCK_IDS.NFC_SERIAL + '-action'
           ].value?.toLowerCase() ?? 'NO_TAG';
-        const compactMode =
-          payload.view.state.values[BLOCK_IDS.COMPACT_MODE][
-            BLOCK_IDS.COMPACT_MODE + '-action'
-          ].selected_options[0]?.value ?? 'false';
         const id = payload.user.id;
         const user = await this.userService.getUser(id);
         user.tag = tag;
-        user.compactMode = JSON.parse(compactMode);
-        await this.userService.updateUser(id, user);
+        const miscOptions = payload.view.state.values[BLOCK_IDS.MISC][
+          BLOCK_IDS.MISC + '-action'
+        ].selected_options.reduce((acc, curr) => {
+          const key = MISC_OPTIONS_TO_KEYS[curr.value];
+          if (key) {
+            return { ...acc, [key]: true };
+          }
+          return { ...acc };
+        }, {});
+
+        // Default values
+        const userOptions = {
+          compactMode: false,
+          blockStatusMessagePrompt: false,
+          ...miscOptions,
+        };
+
+        await this.userService.updateUser(id, { ...user, ...userOptions });
         await this.showHomeScreen(id);
         return;
       }
+    }
+  }
+
+  async showAddTodayStatusModal(userId: string, triggerId) {
+    const user = await this.userService.getUser(userId);
+    const hasStatus = await this.officeService.userHasStatusMessageForDay(
+      userId,
+      weekdayKeyBuilder(Date.now()),
+      user.office,
+    );
+
+    if (!hasStatus) {
+      await this.web.views.open({
+        user_id: userId,
+        view: statusMessageTodayModal(),
+        trigger_id: triggerId,
+      });
+    } else {
+      return false;
     }
   }
 
