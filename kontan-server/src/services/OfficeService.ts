@@ -26,6 +26,10 @@ export interface Office {
   id: string;
 }
 
+export interface ParkingSpace {
+  id: string;
+}
+
 type Weekday = Record<string, User['slackUserId'][]>;
 
 @Injectable()
@@ -46,18 +50,20 @@ export class OfficeService {
     });
 
     const offices = await this.getOffices();
-    offices.forEach(async (office) => {
-      const ref = this.admin
-        .db()
-        .collection('presence')
-        .doc(`weekday_${office.id}`);
+    const parkingSpaces = await this.getParkingSpaces();
+
+    const handler = async (key: 'weekday' | 'parking', id) => {
+      const ref = this.admin.db().collection('presence').doc(`${key}_${id}`);
 
       const dayKeys = getUpcomingWeekdayKeys(false);
       const data = (await ref.get()).data() as Weekday;
       delete data?.[yesterday];
       data[dayKeys[dayKeys.length - 1]] = [];
       await ref.set({ ...data });
-    });
+    };
+
+    offices.forEach((office) => handler('weekday', office.id));
+    parkingSpaces.forEach((parking) => handler('parking', parking.id));
   }
 
   async resetInbound(): Promise<void> {
@@ -224,6 +230,16 @@ export class OfficeService {
     return offices;
   }
 
+  async getParkingSpaces(): Promise<ParkingSpace[]> {
+    const snapshot = await this.admin.db().collection('parking-spaces').get();
+    const spaces = new Array<ParkingSpace>();
+    snapshot.forEach((doc) => {
+      spaces.push(doc.data() as Office);
+    });
+
+    return spaces;
+  }
+
   async userHasStatusMessageForDay(
     userId: string,
     dayKey: string,
@@ -273,6 +289,66 @@ export class OfficeService {
       .doc(`${user.slackUserId}_${user.office}_${dayKey}`)
       .delete();
   }
+
+  async getPlannedParking(office: string) {
+    const statuses = await this.admin
+      .db()
+      .collection('presence')
+      .doc('parking_' + office)
+      .get();
+    return statuses.data() as Record<string, ParkingSpacePresence>;
+  }
+
+  async setPlannedParking(user: User, value: string) {
+    const ref = this.admin
+      .db()
+      .collection('presence')
+      .doc('parking_' + user.office);
+
+    const data = (await ref.get()).data();
+
+    data[value] = { slackUserId: user.slackUserId, dayKey: value };
+
+    await ref.set({ ...data });
+  }
+
+  async deletePlannedParking(user: User, value: string) {
+    const ref = this.admin
+      .db()
+      .collection('presence')
+      .doc('parking_' + user.office);
+
+    const data = (await ref.get()).data();
+
+    if (data?.[value]?.slackUserId === user.slackUserId) {
+      delete data[value];
+      await ref.set({ ...data });
+    }
+  }
+
+  async getPlannedParkingForUser(user: User) {
+    const ref = await this.admin
+      .db()
+      .collection('presence')
+      .doc('parking_' + user.office)
+      .get();
+
+    const data = ref.data();
+
+    return Object.values(data).filter(
+      (d) => d.slackUserId === user.slackUserId,
+    );
+  }
+}
+
+export interface ParkingSpacePresenceDto {
+  user: User;
+  dayKey: string;
+}
+
+export interface ParkingSpacePresence {
+  slackUserId: User['slackUserId'];
+  dayKey: string;
 }
 
 export interface StatusMessage {
