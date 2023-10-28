@@ -38,7 +38,9 @@ export class OfficeService {
       .get()
       .then((coll) => coll.docs.map((d) => d.data()));
     const yesterday = weekdayKeyBuilder(Date.now() - 24 * 60 * 60 * 1000);
-    const statusesToDelete = statuses.filter((s) => s.key === yesterday);
+    const statusesToDelete = statuses.filter(
+      (s) => s.dayKey === yesterday || s.dayKey < yesterday,
+    );
     statusesToDelete.forEach((s) => {
       this.admin.db().collection('statuses').doc(s.id).delete();
     });
