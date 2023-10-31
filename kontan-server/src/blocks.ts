@@ -1,11 +1,19 @@
 /* eslint-disable max-len */
-import { ModalView, View, PlainTextOption, Block } from '@slack/web-api';
+import {
+  ModalView,
+  View,
+  PlainTextOption,
+  Block,
+  Option,
+} from '@slack/web-api';
 import {
   InboundDto,
   Status,
   UpcomingPresenceDto,
   Office,
   StatusMessage,
+  ParkingSpacePresence,
+  ParkingSpacePresenceDto,
 } from './services/OfficeService';
 import {
   getDay,
@@ -31,6 +39,8 @@ export const ACTIONS = {
   STATUS_MESSAGE_TODAY: 'status_message_today',
   STATUS_MESSAGE_TODAY_MESSAGE: 'status_message_today_message',
   MISC: 'misc',
+  PARKING_MODAL: 'parking_modal',
+  PARKING_CHECKBOX: 'parking_checkbox',
 };
 
 export const BLOCK_IDS = {
@@ -49,6 +59,7 @@ export const MODALS = {
   SETTINGS: 'settings',
   STATUS_MESSAGE: 'status_message',
   STATUS_MESSAGE_TODAY: 'status_message_today',
+  PARKING_MODAL: 'parking_modal',
 };
 
 export const MISC_OPTIONS_VALUES = {
@@ -711,6 +722,25 @@ export const homeScreen = ({
           },
         ],
       },
+      ...(user.office.startsWith('Lund')
+        ? [
+            {
+              type: 'actions',
+              elements: [
+                {
+                  type: 'button',
+                  text: {
+                    type: 'plain_text',
+                    text: 'Need parking? :car: :parking:',
+                    emoji: true,
+                  },
+                  value: ACTIONS.PARKING_MODAL,
+                  action_id: ACTIONS.PARKING_MODAL,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         type: 'section',
         text: {
@@ -808,6 +838,133 @@ export const homeScreen = ({
             },
           ]
         : []),
+    ],
+  };
+};
+
+export const parkingModal = ({
+  plannedParking,
+  user,
+}: {
+  plannedParking: ParkingSpacePresenceDto[];
+  user: User;
+}): View => {
+  const keys = getUpcomingWeekdayKeys();
+  const initialOptions = new Array<Option>();
+  const inputOptions = new Array<Option>();
+  const today = weekdayKeyBuilder(Date.now());
+
+  const daysToRenderCheckboxes = keys.reduce((acc, curr) => {
+    const exists = plannedParking.find((p) => p?.dayKey === curr);
+    const shouldKeep = plannedParking.some((p) =>
+      exists
+        ? p?.dayKey === curr && p?.user?.slackUserId === user.slackUserId
+        : true,
+    );
+    return [...acc, shouldKeep && curr].filter(Boolean);
+  }, []);
+
+  daysToRenderCheckboxes.forEach((key) => {
+    const inputOption = {
+      text: {
+        type: 'plain_text',
+        text: key === today ? `Today` : `${weekdayKeyToDayStr(key, false)}`,
+        emoji: true,
+      },
+      value: `weekdayCheckbox-${key}`,
+      ...(getDay(key) === 1 && {
+        description: {
+          type: 'mrkdwn',
+          text: `_Week ${getWeek(key)}_`,
+        },
+      }),
+    } as unknown as PlainTextOption;
+    inputOptions.push(inputOption);
+    const match = plannedParking.find(
+      (parking) =>
+        parking?.user.slackUserId === user.slackUserId &&
+        parking?.dayKey === key,
+    );
+    !!match && initialOptions.push(inputOption);
+  });
+  const bookedDaysList = keys
+    .map((key) => {
+      const match = plannedParking.find((p) => p?.dayKey === key);
+      if (!match) {
+        return null;
+      }
+      return {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: weekdayKeyToDayStr(key, false) + ` - ${match.user?.name}`,
+        },
+      };
+    })
+    .filter(Boolean);
+  return {
+    type: 'modal',
+    callback_id: MODALS.PARKING_MODAL,
+    title: {
+      type: 'plain_text',
+      text: 'Parking ' + user.office,
+      emoji: true,
+    },
+    submit: {
+      type: 'plain_text',
+      text: 'Done',
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Cancel',
+      emoji: true,
+    },
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'Available dates',
+        },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'checkboxes',
+            ...(initialOptions.length !== 0 && {
+              initial_options: initialOptions,
+            }),
+            options: inputOptions,
+            action_id: ACTIONS.PARKING_CHECKBOX,
+          },
+        ],
+      },
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'Already Booked dates',
+        },
+      },
+      {
+        type: 'divider',
+      },
+      ...(bookedDaysList.length
+        ? bookedDaysList
+        : [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: 'All dates are free!',
+              },
+            },
+          ]),
+      {
+        type: 'divider',
+      },
     ],
   };
 };

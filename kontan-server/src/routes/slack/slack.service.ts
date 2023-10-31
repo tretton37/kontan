@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Admin } from '../../services/Admin';
 import { UserService } from '../../services/UserService';
-import { OfficeService } from '../../services/OfficeService';
+import {
+  OfficeService,
+  ParkingSpacePresenceDto,
+} from '../../services/OfficeService';
 import { SlackClient } from '../../services/SlackClient';
 import { SlackEvent } from '../../types';
 import {
@@ -11,10 +14,10 @@ import {
   homeScreen,
   newUserBlock,
   registerModal,
+  parkingModal,
   settingsModal,
   statusMessageModal,
   statusMessageTodayModal,
-  MISC_OPTIONS_VALUES,
   MISC_OPTIONS_TO_KEYS,
 } from '../../blocks';
 import * as crypto from 'crypto';
@@ -83,6 +86,30 @@ export class SlackService {
           trigger_id: payload.trigger_id,
         });
       }
+      if (value === ACTIONS.PARKING_MODAL) {
+        const user = await this.userService.getUser(payload.user.id);
+        const plannedParking = await this.officeService.getPlannedParking(
+          user.office,
+        );
+        const pDto: ParkingSpacePresenceDto[] = await Promise.all(
+          Object.values(plannedParking)
+            .map(async (p) => {
+              if (!p?.slackUserId) {
+                return null;
+              }
+              return {
+                ...p,
+                user: await this.userService.getUser(p.slackUserId),
+              };
+            })
+            .filter(Boolean),
+        );
+        await this.web.views.open({
+          user_id: payload.user.id,
+          view: parkingModal({ plannedParking: pDto, user }),
+          trigger_id: payload.trigger_id,
+        });
+      }
       if (value === ACTIONS.SETTINGS_BUTTON) {
         const user = await this.userService.getUser(payload.user.id);
         if (user.tag === 'NO_TAG') {
@@ -130,6 +157,53 @@ export class SlackService {
       if (value === ACTIONS.REFRESH_BUTTON) {
         await this.showHomeScreen(payload.user.id);
       }
+      if (action_id === ACTIONS.PARKING_CHECKBOX) {
+        const user = await this.userService.getUser(payload.user.id);
+        const values = selected_options.map(({ value }) =>
+          value.replace('weekdayCheckbox-', ''),
+        );
+        const alreadyPlannedParkingForUser =
+          await this.officeService.getPlannedParkingForUser(user);
+        const set = new Set(alreadyPlannedParkingForUser ?? []);
+        for (let i = 0; i < values.length; i++) {
+          if (set.has(values[i])) {
+            continue;
+          }
+          await this.officeService.setPlannedParking(user, values[i]);
+        }
+
+        await Promise.all(
+          alreadyPlannedParkingForUser.map(async (v) => {
+            if (!values.includes(v.dayKey)) {
+              await this.officeService.deletePlannedParking(user, v.dayKey);
+            }
+          }),
+        );
+
+        const plannedParking = await this.officeService.getPlannedParking(
+          user.office,
+        );
+        const pDto: ParkingSpacePresenceDto[] = await Promise.all(
+          Object.values(plannedParking)
+            .map(async (p) => {
+              if (!p?.slackUserId) {
+                return null;
+              }
+              return {
+                ...p,
+                user: await this.userService.getUser(p.slackUserId),
+              };
+            })
+            .filter(Boolean),
+        );
+
+        await this.web.views.update({
+          user_id: payload.user.id,
+          view_id: payload.view.id,
+          view: parkingModal({ plannedParking: pDto, user }),
+          trigger_id: payload.trigger_id,
+        });
+      }
       if (action_id === ACTIONS.DAY_CHECKBOX) {
         const values = selected_options.map(({ value }) =>
           value.replace('weekdayCheckbox-', ''),
@@ -151,7 +225,6 @@ export class SlackService {
       payload.type === 'view_closed' &&
       payload.view.callback_id === MODALS.STATUS_MESSAGE_TODAY
     ) {
-      console.log(payload);
       await this.showHomeScreen(payload.user.id);
       return;
     }
