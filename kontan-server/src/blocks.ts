@@ -922,6 +922,15 @@ export const parkingModal = ({
     },
     blocks: [
       {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text:
+            'This is first and foremost a parking space for visitors and clients. When not used for visitors we can utilize the space internally and book here.\n' +
+            'Using the visitors parking space should be an option for occasional use and not an every day choice. If you are booked and we need the space for an external visitor, you will be asked to move your car. Thanks for your cooperation!',
+        },
+      },
+      {
         type: 'header',
         text: {
           type: 'plain_text',
