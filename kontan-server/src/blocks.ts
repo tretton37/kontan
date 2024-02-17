@@ -939,19 +939,27 @@ export const parkingModal = ({
           text: 'Available dates',
         },
       },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'checkboxes',
-            ...(initialOptions.length !== 0 && {
-              initial_options: initialOptions,
-            }),
-            options: inputOptions,
-            action_id: ACTIONS.PARKING_CHECKBOX,
+      inputOptions.length > 0
+        ? {
+            type: 'actions',
+            elements: [
+              {
+                type: 'checkboxes',
+                ...(initialOptions.length !== 0 && {
+                  initial_options: initialOptions,
+                }),
+                options: inputOptions,
+                action_id: ACTIONS.PARKING_CHECKBOX,
+              },
+            ],
+          }
+        : {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: 'All dates seems to be booked',
+            },
           },
-        ],
-      },
       {
         type: 'header',
         text: {
