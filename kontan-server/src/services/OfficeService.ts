@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Admin } from './Admin';
 import {
   getUpcomingWeekdayKeys,
   weekdayKeyBuilder,
   weekdayKeyToDayStr,
 } from '../utils';
-import { User } from './UserService';
+import { User, UserService } from './UserService';
+import { SlackService } from '../routes/slack/slack.service';
+import { SlackClient } from './SlackClient';
 
 export type Status = 'INBOUND' | 'OUTBOUND' | 'PLANNED' | 'PLANNED_NO_TAG';
 export interface InboundDto extends User {
@@ -34,7 +36,11 @@ type Weekday = Record<string, User['slackUserId'][]>;
 
 @Injectable()
 export class OfficeService {
-  constructor(private readonly admin: Admin) {}
+  constructor(
+    private readonly admin: Admin,
+    private readonly userService: UserService,
+    private readonly slackClient: SlackClient,
+  ) {}
   async incrementDays(): Promise<void> {
     const statuses = await this.admin
       .db()
@@ -172,6 +178,26 @@ export class OfficeService {
     }, []);
   }
 
+  async sendPresenceNotification(
+    notifyUserId: User['slackUserId'],
+    eventUserName: string,
+    date: string,
+    officeName: string,
+    type: 'REMOVE' | 'ADD',
+  ) {
+    if (type === 'ADD') {
+      await this.slackClient.chat.postMessage({
+        channel: notifyUserId,
+        text: `Yay! :tada: ${eventUserName} is now also planning on being in ${officeName} office on ${date}!`,
+      });
+    } else {
+      await this.slackClient.chat.postMessage({
+        channel: notifyUserId,
+        text: `sad_music.mp4 :sadcat: ${eventUserName} has cancelled to come to ${officeName} office on ${date}.`,
+      });
+    }
+  }
+
   async setPlannedPresence(dates: string[], user: User): Promise<void> {
     const offices = await this.getOffices();
     const office = user.office ?? offices[0].id;
@@ -184,8 +210,34 @@ export class OfficeService {
     keys.forEach((key) => {
       if (dates.includes(key)) {
         data[key] = [...new Set([...data[key], user.slackUserId])];
+        data[key]
+          .filter((u) => u !== user.slackUserId)
+          .forEach(async (userId) => {
+            const notifyUser = await this.userService.getUser(userId);
+            if (notifyUser.presenceNotifications) {
+              this.sendPresenceNotification(
+                notifyUser.slackUserId,
+                user.name,
+                weekdayKeyToDayStr(key),
+                office,
+                'ADD',
+              );
+            }
+          });
       } else {
         data[key] = data[key]?.filter((id) => id !== user.slackUserId) ?? [];
+        data[key].forEach(async (userId) => {
+          const notifyUser = await this.userService.getUser(userId);
+          if (notifyUser.presenceNotifications) {
+            this.sendPresenceNotification(
+              notifyUser.slackUserId,
+              user.name,
+              weekdayKeyToDayStr(key),
+              office,
+              'REMOVE',
+            );
+          }
+        });
         this.removeStatusMessage(user, key);
       }
     });

@@ -283,6 +283,7 @@ export class SlackService {
           office: homeOffice,
           compactMode: false,
           blockStatusMessagePrompt: false,
+          presenceNotifications: false,
         });
         await this.showHomeScreen(id);
         return;
@@ -345,6 +346,7 @@ export class SlackService {
         const userOptions = {
           compactMode: false,
           blockStatusMessagePrompt: false,
+          presenceNotifications: false,
           ...miscOptions,
         };
 

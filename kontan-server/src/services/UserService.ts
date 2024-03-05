@@ -10,6 +10,7 @@ export interface User {
   office: string;
   compactMode: boolean;
   blockStatusMessagePrompt: boolean;
+  presenceNotifications: boolean;
 }
 @Injectable()
 export class UserService {
@@ -17,7 +18,13 @@ export class UserService {
     private readonly admin: Admin,
     private readonly web: SlackClient,
   ) {}
-  async createUser({ tag, slackUserId, office, compactMode }: User) {
+  async createUser({
+    tag,
+    slackUserId,
+    office,
+    compactMode,
+    presenceNotifications = false,
+  }: User) {
     if (await this.userExists(slackUserId)) {
       return;
     }
@@ -30,6 +37,7 @@ export class UserService {
       slackUserId,
       office,
       compactMode,
+      presenceNotifications,
     });
   }
 
@@ -71,6 +79,7 @@ export class UserService {
       office,
       compactMode = false,
       blockStatusMessagePrompt = false,
+      presenceNotifications = false,
     }: User,
   ) {
     const ref = this.admin.db().collection('users').doc(slackUserId);
@@ -79,6 +88,7 @@ export class UserService {
       tag,
       compactMode,
       blockStatusMessagePrompt,
+      presenceNotifications,
     });
   }
 }

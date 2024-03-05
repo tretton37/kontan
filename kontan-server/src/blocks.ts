@@ -67,11 +67,13 @@ export const MODALS = {
 export const MISC_OPTIONS_VALUES = {
   block_status_message_prompt: 'block_status_message_prompt',
   compact: 'compact',
+  presence_notifications: 'presence_notifications',
 };
 
 export const MISC_OPTIONS_TO_KEYS = {
   block_status_message_prompt: 'blockStatusMessagePrompt',
   compact: 'compactMode',
+  presence_notifications: 'presenceNotifications',
 };
 
 export const newUserBlock: View = {
@@ -410,6 +412,20 @@ export const settingsModal = (user: User): ModalView => {
       });
     }
 
+    if (user.presenceNotifications) {
+      options.push({
+        text: {
+          type: 'plain_text',
+          text: 'Presence notifications',
+        },
+        value: MISC_OPTIONS_VALUES.presence_notifications,
+        description: {
+          type: 'plain_text',
+          text: 'Get notified when someone books/unbooks the same day as you',
+        },
+      });
+    }
+
     return !!options.length ? { initial_options: options } : {};
   };
   return {
@@ -470,6 +486,17 @@ export const settingsModal = (user: User): ModalView => {
                 text: 'Block status message prompt on check-in',
               },
               value: MISC_OPTIONS_VALUES.block_status_message_prompt,
+            },
+            {
+              text: {
+                type: 'plain_text',
+                text: 'Presence notifications',
+              },
+              value: MISC_OPTIONS_VALUES.presence_notifications,
+              description: {
+                type: 'plain_text',
+                text: 'Get notified when someone books/unbooks the same day as you',
+              },
             },
           ],
           ...getInitialOptions(),
