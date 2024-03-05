@@ -14,6 +14,8 @@ import {
   StatusMessage,
   ParkingSpacePresence,
   ParkingSpacePresenceDto,
+  ParkingSpaceTimeSlot,
+  parkingSpaceTimeSlotToText,
 } from './services/OfficeService';
 import {
   getDay,
@@ -846,62 +848,119 @@ export const parkingModal = ({
   plannedParking,
   user,
 }: {
-  plannedParking: ParkingSpacePresenceDto[];
+  plannedParking: ParkingSpacePresenceDto[][];
   user: User;
 }): View => {
   const keys = getUpcomingWeekdayKeys();
-  const initialOptions = new Array<Option>();
-  const inputOptions = new Array<Option>();
+  const initialOptions = {} as Record<string, Option[]>;
+  const inputOptions = {} as Record<string, Option[]>;
   const today = weekdayKeyBuilder(Date.now());
 
   const daysToRenderCheckboxes = keys.reduce((acc, curr) => {
-    const exists = plannedParking.find((p) => p?.dayKey === curr);
-    const shouldKeep = plannedParking.some((p) =>
+    const exists = plannedParking.find((pArr) =>
+      pArr?.some((p) => p.dayKey === curr),
+    );
+    const shouldKeep = plannedParking.some((pArr) =>
       exists
-        ? p?.dayKey === curr && p?.user?.slackUserId === user.slackUserId
+        ? pArr.some(
+            (p) =>
+              p?.dayKey === curr && p?.user?.slackUserId === user.slackUserId,
+          )
         : true,
     );
     return [...acc, shouldKeep && curr].filter(Boolean);
   }, []);
 
   daysToRenderCheckboxes.forEach((key) => {
-    const inputOption = {
-      text: {
-        type: 'plain_text',
-        text: key === today ? `Today` : `${weekdayKeyToDayStr(key, false)}`,
-        emoji: true,
-      },
-      value: `weekdayCheckbox-${key}`,
-      ...(getDay(key) === 1 && {
-        description: {
-          type: 'mrkdwn',
-          text: `_Week ${getWeek(key)}_`,
-        },
-      }),
-    } as unknown as PlainTextOption;
-    inputOptions.push(inputOption);
-    const match = plannedParking.find(
-      (parking) =>
-        parking?.user.slackUserId === user.slackUserId &&
-        parking?.dayKey === key,
-    );
-    !!match && initialOptions.push(inputOption);
+    const inputs = [1, 2, 3]
+      .reduce((acc, curr) => {
+        let match: ParkingSpacePresenceDto;
+        plannedParking.forEach((pArr) => {
+          const parking = pArr.find(
+            (p) => p.dayKey === key && p.timeSlot === curr,
+          );
+          if (parking) match = parking;
+        });
+        const identical =
+          match?.dayKey === key &&
+          match?.timeSlot === curr &&
+          match?.user.slackUserId === user.slackUserId;
+        const shouldKeep = match ? identical : true;
+        const inputOption = {
+          text: {
+            type: 'plain_text',
+            text: parkingSpaceTimeSlotToText(curr as ParkingSpaceTimeSlot),
+            emoji: true,
+          },
+          value: `weekdayCheckbox-${key}*SEPARATOR*${curr}`,
+        } as unknown as PlainTextOption;
+        if (identical) {
+          initialOptions[key] = [...(initialOptions[key] ?? []), inputOption];
+        }
+        return [...acc, shouldKeep && inputOption];
+      }, [])
+      .filter(Boolean);
+    inputOptions[key] = inputs;
   });
-  const bookedDaysList = keys
-    .map((key) => {
-      const match = plannedParking.find((p) => p?.dayKey === key);
-      if (!match) {
-        return null;
-      }
-      return {
-        type: 'section',
+
+  const renderCheckboxGroup = (key: string) => {
+    if (inputOptions[key].length === 0) return [];
+    return [
+      {
+        type: 'header',
         text: {
-          type: 'mrkdwn',
-          text: weekdayKeyToDayStr(key, false) + ` - ${match.user?.name}`,
+          type: 'plain_text',
+          text: key === today ? 'Today' : weekdayKeyToDayStr(key),
         },
-      };
-    })
-    .filter(Boolean);
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'checkboxes',
+            ...(initialOptions[key]?.length > 0 && {
+              initial_options: initialOptions[key],
+            }),
+            options: inputOptions[key],
+            action_id: ACTIONS.PARKING_CHECKBOX,
+          },
+        ],
+      },
+    ];
+  };
+  const bookedDaysList = [];
+  keys.forEach((key) => {
+    const matches = plannedParking.map((pArr) => {
+      return pArr.filter((p) => p.dayKey === key);
+    });
+
+    matches.forEach((dto) => {
+      if (dto.length === 0) return;
+      dto
+        .sort((a, b) => a.timeSlot - b.timeSlot)
+        .forEach((match, i) => {
+          if (i === 0) {
+            bookedDaysList.push({
+              type: 'header',
+              text: {
+                type: 'plain_text',
+                text: weekdayKeyToDayStr(key),
+              },
+            });
+          }
+          bookedDaysList.push({
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text:
+                parkingSpaceTimeSlotToText(match.timeSlot) +
+                ` - ${match?.user?.name}`,
+            },
+          });
+        });
+    });
+  });
+
   return {
     type: 'modal',
     callback_id: MODALS.PARKING_MODAL,
@@ -928,62 +987,48 @@ export const parkingModal = ({
           text:
             'This is first and foremost a parking space for visitors and clients. When not used for visitors we can utilize the space internally and book here.\n' +
             'Using the visitors parking space should be an option for occasional use and not an every day choice. If you are booked and we need the space for an external visitor, you will be asked to move your car.\n\n' +
-            "Note that it's only allowed to book a spot one day at a time.\n\n" +
+            'Note that you may book several time slots per day, but only one day at a time.\n\n' +
             'Thanks for your cooperation!',
-        },
-      },
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: 'Available dates',
-        },
-      },
-      inputOptions.length > 0
-        ? {
-            type: 'actions',
-            elements: [
-              {
-                type: 'checkboxes',
-                ...(initialOptions.length !== 0 && {
-                  initial_options: initialOptions,
-                }),
-                options: inputOptions,
-                action_id: ACTIONS.PARKING_CHECKBOX,
-              },
-            ],
-          }
-        : {
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: 'All dates seems to be booked',
-            },
-          },
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: 'Already Booked dates',
         },
       },
       {
         type: 'divider',
       },
-      ...(bookedDaysList.length
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'Available time slots',
+        },
+      },
+      ...daysToRenderCheckboxes.map((day) => renderCheckboxGroup(day)).flat(),
+      {
+        type: 'divider',
+      },
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'Already Booked time slots',
+        },
+      },
+      {
+        type: 'divider',
+      },
+      ...(bookedDaysList.length > 0
         ? bookedDaysList
         : [
             {
               type: 'section',
               text: {
                 type: 'mrkdwn',
-                text: 'All dates are free!',
+                text: 'All time slots are free!',
               },
             },
           ]),
       {
         type: 'divider',
       },
-    ],
+    ] as Block[],
   };
 };

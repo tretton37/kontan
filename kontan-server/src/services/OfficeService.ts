@@ -299,7 +299,7 @@ export class OfficeService {
     return statuses.data() as Record<string, ParkingSpacePresence>;
   }
 
-  async setPlannedParking(user: User, value: string) {
+  async setPlannedParking({ user, dayKey, timeSlot }: ParkingSpacePresenceDto) {
     const ref = this.admin
       .db()
       .collection('presence')
@@ -307,23 +307,37 @@ export class OfficeService {
 
     const data = (await ref.get()).data();
 
-    data[value] = { slackUserId: user.slackUserId, dayKey: value };
+    data[dayKey] = [
+      ...(data?.[dayKey] ?? []),
+      { slackUserId: user.slackUserId, dayKey, timeSlot },
+    ];
 
     await ref.set({ ...data });
   }
 
-  async deletePlannedParking(user: User, value: string) {
+  async deletePlannedParking({
+    user,
+    dayKey,
+    timeSlot,
+  }: ParkingSpacePresenceDto) {
     const ref = this.admin
       .db()
       .collection('presence')
       .doc('parking_' + user.office);
 
-    const data = (await ref.get()).data();
+    const data = (await ref.get()).data() as Record<
+      string,
+      ParkingSpacePresence
+    >;
 
-    if (data?.[value]?.slackUserId === user.slackUserId) {
-      delete data[value];
-      await ref.set({ ...data });
-    }
+    data[dayKey] = data[dayKey]?.filter(
+      (p) =>
+        p.slackUserId !== user.slackUserId &&
+        p.dayKey !== dayKey &&
+        p.timeSlot !== timeSlot,
+    );
+
+    await ref.set({ ...data });
   }
 
   async getPlannedParkingForUser(user: User) {
@@ -333,23 +347,38 @@ export class OfficeService {
       .doc('parking_' + user.office)
       .get();
 
-    const data = ref.data();
+    const data = ref.data() as Record<string, ParkingSpacePresence>;
 
-    return Object.values(data).filter(
-      (d) => d.slackUserId === user.slackUserId,
+    return Object.values(data).filter((d) =>
+      d.some((p) => p.slackUserId === user.slackUserId),
     );
   }
 }
 
+export const parkingSpaceTimeSlotToText = (timeSlot: ParkingSpaceTimeSlot) => {
+  switch (timeSlot) {
+    case 1:
+      return 'Until 12:00';
+    case 2:
+      return '12:00 - 17:00';
+    case 3:
+      return 'After 17:00';
+  }
+};
+
 export interface ParkingSpacePresenceDto {
   user: User;
   dayKey: string;
+  timeSlot: ParkingSpaceTimeSlot;
 }
 
-export interface ParkingSpacePresence {
+export type ParkingSpaceTimeSlot = 1 | 2 | 3;
+
+export type ParkingSpacePresence = Array<{
   slackUserId: User['slackUserId'];
   dayKey: string;
-}
+  timeSlot: ParkingSpaceTimeSlot;
+}>;
 
 export interface StatusMessage {
   slackUserId: User['slackUserId'];

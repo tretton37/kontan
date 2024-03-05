@@ -4,6 +4,7 @@ import { UserService } from '../../services/UserService';
 import {
   OfficeService,
   ParkingSpacePresenceDto,
+  ParkingSpaceTimeSlot,
 } from '../../services/OfficeService';
 import { SlackClient } from '../../services/SlackClient';
 import { SlackEvent } from '../../types';
@@ -91,19 +92,24 @@ export class SlackService {
         const plannedParking = await this.officeService.getPlannedParking(
           user.office,
         );
-        const pDto: ParkingSpacePresenceDto[] = await Promise.all(
-          Object.values(plannedParking)
-            .map(async (p) => {
-              if (!p?.slackUserId) {
-                return null;
-              }
-              return {
-                ...p,
-                user: await this.userService.getUser(p.slackUserId),
-              };
-            })
-            .filter(Boolean),
+
+        const pDto: ParkingSpacePresenceDto[][] = await Promise.all(
+          Object.values(plannedParking).map(async (pArray) => {
+            const results = await Promise.all(
+              pArray.map(async (p) => {
+                if (!p?.slackUserId) {
+                  return null;
+                }
+                return {
+                  ...p,
+                  user: await this.userService.getUser(p.slackUserId),
+                };
+              }),
+            );
+            return results;
+          }),
         );
+
         await this.web.views.open({
           user_id: payload.user.id,
           view: parkingModal({ plannedParking: pDto, user }),
@@ -159,42 +165,71 @@ export class SlackService {
       }
       if (action_id === ACTIONS.PARKING_CHECKBOX) {
         const user = await this.userService.getUser(payload.user.id);
-        const values = selected_options.map(({ value }) =>
-          value.replace('weekdayCheckbox-', ''),
-        );
+        const values = selected_options.map(({ value }) => {
+          const [dayKey, timeSlot] = value
+            .replace('weekdayCheckbox-', '')
+            .split('*SEPARATOR*');
+          return { dayKey, timeSlot: Number(timeSlot) as ParkingSpaceTimeSlot };
+        });
         const alreadyPlannedParkingForUser =
           await this.officeService.getPlannedParkingForUser(user);
-        const set = new Set(alreadyPlannedParkingForUser ?? []);
+        const set = new Set(
+          alreadyPlannedParkingForUser
+            .map((s) => s.map((p) => p.dayKey + p.timeSlot))
+            .flat() ?? [],
+        );
         for (let i = 0; i < values.length; i++) {
-          if (set.has(values[i])) {
+          if (set.has(values[i].dayKey + values[i].timeSlot)) {
             continue;
           }
-          await this.officeService.setPlannedParking(user, values[i]);
+          await this.officeService.setPlannedParking({
+            user,
+            dayKey: values[i]?.dayKey,
+            timeSlot: values[i]?.timeSlot,
+          });
         }
 
+        // Delete parking for other days since it's only allowed to book one day at a time
         await Promise.all(
           alreadyPlannedParkingForUser.map(async (v) => {
-            if (!values.includes(v.dayKey)) {
-              await this.officeService.deletePlannedParking(user, v.dayKey);
-            }
+            return await Promise.all(
+              v.map(async (s) => {
+                if (
+                  !values.some(
+                    (value) =>
+                      value.dayKey === s.dayKey &&
+                      value.timeSlot === s.timeSlot,
+                  )
+                ) {
+                  await this.officeService.deletePlannedParking({
+                    user,
+                    dayKey: s.dayKey,
+                    timeSlot: s.timeSlot,
+                  });
+                }
+              }),
+            );
           }),
         );
 
         const plannedParking = await this.officeService.getPlannedParking(
           user.office,
         );
-        const pDto: ParkingSpacePresenceDto[] = await Promise.all(
-          Object.values(plannedParking)
-            .map(async (p) => {
-              if (!p?.slackUserId) {
-                return null;
-              }
-              return {
-                ...p,
-                user: await this.userService.getUser(p.slackUserId),
-              };
-            })
-            .filter(Boolean),
+        const pDto: ParkingSpacePresenceDto[][] = await Promise.all(
+          Object.values(plannedParking).map(async (pArray) => {
+            const results = await Promise.all(
+              pArray.map(async (p) => {
+                if (!p?.slackUserId) {
+                  return null;
+                }
+                return {
+                  ...p,
+                  user: await this.userService.getUser(p.slackUserId),
+                };
+              }),
+            );
+            return results;
+          }),
         );
 
         await this.web.views.update({
