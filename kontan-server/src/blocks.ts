@@ -889,7 +889,7 @@ export const parkingModal = ({
     );
     const shouldKeep = plannedParking.some((pArr) =>
       exists
-        ? pArr.some(
+        ? !pArr.every(
             (p) =>
               p?.dayKey === curr && p?.user?.slackUserId === user.slackUserId,
           )
