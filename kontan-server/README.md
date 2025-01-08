@@ -63,13 +63,25 @@ Then run `sudo supervisorctl reread` and `sudo supervisorctl update` to update t
 
 ### Getting the latest code on your device
 
-Set up a gh runner on your rPi.
+Set up a gh runner on your rPi. Alternatively ssh into your device, and run the different .sh scripts available.
 
 You'll need the following dependencies: 
 
 - Supervisor 
 - ngrok 
 - node 
+
+### Secrets 
+
+You'll get all the secrets you need from the Slack App Directory.
+
+### Setting up the tunnel
+
+You can utilize the Kontan DEV slack project to run the project locally, but keep in mind that you need ngrok on your
+local device to expose the server to the internet - set the base URLs in Slack App Directory to the ngrok tunnel on your local machine.
+
+Under Slack App Settings > Features > Event Subscriptions > Request URL, `https://<ngrok-url>/slack/events`
+Under Slack App Settings > Features > Interactivity & Shortcuts > Request URL, `https://<ngrok-url>/slack/interactive`
 
 ## Service Account 
 Go to firebase > Project settings > Service accounts > Generate new private key > Save the file as serviceAccount.json and serviceAccount.dev.json from the dev project
